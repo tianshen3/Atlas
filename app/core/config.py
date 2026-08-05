@@ -12,9 +12,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "ATLAS Enterprise Hybrid RAG"
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = "production"
+    API_V1_STR: str = "/api/v1"
 
     #Server Settings
-    HOST: str = "0.0.0.0"
+    HOST: str = "[IP_ADDRESS]"
     PORT: int = 8000
 
     #Database Defaults
