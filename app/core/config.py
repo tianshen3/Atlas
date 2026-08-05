@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     #Server Settings
-    HOST: str = "[IP_ADDRESS]"
+    HOST: str = "[0.0.0.0]"
     PORT: int = 8000
 
     #Database Defaults
