@@ -94,3 +94,19 @@ class DocumentService:
         total = total_result.scalar_one()
 
         return items, total
+    
+    @staticmethod
+    async def delete_document(
+        db: AsyncSession, document_id: UUID, delete_file_from_disk: bool = True) -> bool: 
+
+        doc = await DocumentService.get_document_by_id(db, document_id)
+
+        if not doc : return False
+
+        if delete_file_from_disk and doc.file_path:
+            p = Path(doc.file_path)
+            if p.exists(): p.unlink()
+
+        await db.delete(doc)
+        await db.commit()
+        return True
