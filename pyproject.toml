@@ -17,6 +17,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.28",
     "asyncpg>=0.29.0",
     "alembic>=1.13.1",
+    "pypdf>=6.15.0",
 ]
 
 [project.optional-dependencies]
@@ -28,4 +29,10 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
 
