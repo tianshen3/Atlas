@@ -57,6 +57,7 @@ venv.bak/
 
 # Documentation & Architecture Documents
 docs/
+.agents
 
 # Storage / Data
 storage/documents/*
