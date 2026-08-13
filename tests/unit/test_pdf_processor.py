@@ -1,7 +1,11 @@
 from pathlib import Path
 import fitz
 import pytest
-from app.workers.pdf_processor import clean_text, extract_text_from_pdf
+from app.workers.pdf_processor import (
+    clean_text,
+    extract_text_from_pdf,
+    chunk_document_pages,
+)
 
 def test_clean_text():
     # Test 1: None input returns empty string
@@ -41,3 +45,38 @@ def test_extract_text_from_valid_pdf(tmp_path: Path):
     assert "Atlas RAG Page 1" in pages[0]["text"]
     assert pages[1]["page_number"] == 2
     assert "Atlas RAG Page 2" in pages[1]["text"]
+
+def test_chunk_document_pages_basic():
+    pages = [
+        {"page_number": 1, "text": "Atlas RAG platform uses vector search for fast retrieval."}
+    ]
+    chunks = chunk_document_pages(pages)
+
+    assert len(chunks) == 1
+    assert chunks[0]["chunk_index"] == 0
+    assert chunks[0]["page_number"] == 1
+    assert chunks[0]["token_count"] > 0
+    assert "Atlas RAG" in chunks[0]["text"]
+
+def test_chunk_document_pages_skips_empty_pages():
+    pages = [
+        {"page_number": 1, "text": "Valid text page for chunking."},
+        {"page_number": 2, "text": "   \n  "},
+    ]
+    chunks = chunk_document_pages(pages)
+
+    assert len(chunks) == 1
+    assert chunks[0]["page_number"] == 1
+
+def test_chunk_document_pages_respects_token_limit():
+    long_text = "This is a long sentence testing the chunking capabilities of the Atlas RAG system. " * 30
+    pages = [{"page_number": 1, "text": long_text}]
+    
+    chunks = chunk_document_pages(pages, chunk_size=30, chunk_overlap=5)
+
+    assert len(chunks) > 1
+    for idx, chunk in enumerate(chunks):
+        assert chunk["chunk_index"] == idx
+        assert chunk["page_number"] == 1
+        assert chunk["token_count"] > 0
+
