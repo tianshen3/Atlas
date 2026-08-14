@@ -1,14 +1,14 @@
 import hashlib
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationException
-from app.db.models.document import Document
+from app.db.models.document import Chunk, Document
 from app.schemas.document import DocumentCreate, DocumentStatus
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB limits
@@ -110,3 +110,33 @@ class DocumentService:
         await db.delete(doc)
         await db.commit()
         return True
+
+    @staticmethod
+    async def save_chunks_to_db(
+        db: AsyncSession, document_id: UUID, chunks_data: List[Dict[str, Any]]
+    ) -> List[Chunk]:
+        """Bulk insert extracted text chunks for a document into PostgreSQL and update status to PROCESSED."""
+        doc = await DocumentService.get_document_by_id(db, document_id)
+        if not doc:
+            raise ValidationException(
+                message=f"Document with id '{document_id}' not found.",
+                details={"document_id": str(document_id)},
+            )
+
+        chunk_objects = [
+            Chunk(
+                document_id=document_id,
+                chunk_index=chunk_info["chunk_index"],
+                text=chunk_info["text"],
+                token_count=chunk_info["token_count"],
+                metadata_json={"page_number": chunk_info["page_number"]},
+            )
+            for chunk_info in chunks_data
+        ]
+
+        db.add_all(chunk_objects)
+        doc.status = DocumentStatus.PROCESSED.value
+        await db.commit()
+
+        return chunk_objects
+
