@@ -135,7 +135,7 @@ class DocumentService:
         ]
 
         db.add_all(chunk_objects)
-        doc.status = DocumentStatus.PROCESSED.value
+        doc.status = DocumentStatus.COMPLETED.value
         await db.commit()
 
         return chunk_objects
