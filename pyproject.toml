@@ -21,6 +21,8 @@ dependencies = [
     "pymupdf>=1.28.2",
     "llama-index-core>=0.14.23",
     "tiktoken>=0.13.0",
+    "fastembed>=0.8.0",
+    "numpy>=2.4.6",
 ]
 
 [project.optional-dependencies]
