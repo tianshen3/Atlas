@@ -23,6 +23,7 @@ dependencies = [
     "tiktoken>=0.13.0",
     "fastembed>=0.8.0",
     "numpy>=2.4.6",
+    "qdrant-client>=1.19.0",
 ]
 
 [project.optional-dependencies]
@@ -39,5 +40,6 @@ include = ["app*"]
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
 ]
 
