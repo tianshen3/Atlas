@@ -4,11 +4,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
+from qdrant_client.models import PointStruct
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationException
 from app.db.models.document import Chunk, Document
+from app.rag.embeddings import DenseEmbeddingEngine
+from app.rag.qdrant import QdrantVectorService
 from app.schemas.document import DocumentCreate, DocumentStatus
 
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB limits
@@ -113,9 +116,14 @@ class DocumentService:
 
     @staticmethod
     async def save_chunks_to_db(
-        db: AsyncSession, document_id: UUID, chunks_data: List[Dict[str, Any]]
+        db: AsyncSession,
+        document_id: UUID,
+        chunks_data: List[Dict[str, Any]],
+        qdrant_service: Optional[QdrantVectorService] = None,
+        embedding_engine: Optional[DenseEmbeddingEngine] = None,
+        collection_name: str = "atlas_chunks_v1",
     ) -> List[Chunk]:
-        """Bulk insert extracted text chunks for a document into PostgreSQL and update status to PROCESSED."""
+        """Bulk insert extracted text chunks for a document into PostgreSQL, generate embeddings, upsert to Qdrant, and update status to COMPLETED."""
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
             raise ValidationException(
@@ -137,6 +145,32 @@ class DocumentService:
         db.add_all(chunk_objects)
         doc.status = DocumentStatus.COMPLETED.value
         await db.commit()
+        for chunk in chunk_objects:
+            await db.refresh(chunk)
+
+        # Upsert vector points to Qdrant if services are supplied
+        if qdrant_service is not None and embedding_engine is not None:
+            texts = [c.text for c in chunk_objects]
+            vectors = embedding_engine.embed_documents(texts)
+            
+            points = [
+                PointStruct(
+                    id=str(chunk.id),
+                    vector=vector,
+                    payload={
+                        "document_id": str(document_id),
+                        "chunk_index": chunk.chunk_index,
+                        "text": chunk.text,
+                        "page_number": chunk.metadata_json.get("page_number") if chunk.metadata_json else None,
+                        "token_count": chunk.token_count,
+                    },
+                )
+                for chunk, vector in zip(chunk_objects, vectors)
+            ]
+            await qdrant_service.upsert_chunk_vectors(
+                collection_name=collection_name, points=points
+            )
 
         return chunk_objects
+
 
