@@ -103,3 +103,52 @@ async def test_save_chunks_to_db_nonexistent_document(db_session: AsyncSession):
         await DocumentService.save_chunks_to_db(db_session, non_existent_id, chunks_data)
         
     assert f"Document with id '{non_existent_id}' not found." in str(exc_info.value.message)
+
+
+@pytest.mark.anyio
+async def test_ingestion_pipeline_with_qdrant_vector_upsert(tmp_path: Path, db_session: AsyncSession):
+    """Integration test verifying chunks are saved to DB and vector points upserted to Qdrant."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    # Create mock Qdrant service and Mock Embedding engine
+    mock_qdrant = AsyncMock()
+    mock_engine = MagicMock()
+    mock_engine.embed_documents.return_value = [[0.1] * 384]
+
+    # Create document
+    doc_in = DocumentCreate(
+        owner_id=None,
+        filename="vector_sample.pdf",
+        file_path="dummy_path.pdf",
+        file_size_bytes=100,
+        mime_type="application/pdf",
+        file_hash="dummy_hash",
+    )
+    db_doc = await DocumentService.create_document(db_session, doc_in)
+
+    chunks_data = [
+        {"chunk_index": 0, "page_number": 1, "text": "Testing vector upsert pipeline.", "token_count": 5}
+    ]
+
+    saved_chunks = await DocumentService.save_chunks_to_db(
+        db=db_session,
+        document_id=db_doc.id,
+        chunks_data=chunks_data,
+        qdrant_service=mock_qdrant,
+        embedding_engine=mock_engine,
+        collection_name="atlas_chunks_v1",
+    )
+
+    assert len(saved_chunks) == 1
+    assert db_doc.status == DocumentStatus.COMPLETED.value
+    mock_engine.embed_documents.assert_called_once_with(["Testing vector upsert pipeline."])
+    mock_qdrant.upsert_chunk_vectors.assert_called_once()
+    
+    # Check that points passed to upsert_chunk_vectors have correct structure
+    call_args = mock_qdrant.upsert_chunk_vectors.call_args
+    assert call_args.kwargs["collection_name"] == "atlas_chunks_v1"
+    points = call_args.kwargs["points"]
+    assert len(points) == 1
+    assert points[0].payload["document_id"] == str(db_doc.id)
+    assert points[0].payload["text"] == "Testing vector upsert pipeline."
+
