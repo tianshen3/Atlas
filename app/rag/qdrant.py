@@ -1,5 +1,14 @@
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct, PayloadSchemaType
+from qdrant_client.models import (
+    Distance,
+    VectorParams,
+    PointStruct,
+    PayloadSchemaType,
+    Filter,
+    FieldCondition,
+    MatchValue,
+    ScoredPoint,
+)
 from app.core.config import settings
 from app.core.logging import logger
 
@@ -71,6 +80,50 @@ class QdrantVectorService:
             points=points,
         )
         logger.info("Upserted points into Qdrant", collection_name=collection_name, count=len(points))
+
+    async def search_vectors(
+        self,
+        collection_name: str,
+        query_vector: list[float],
+        tenant_id: str,
+        document_id: str | None = None,
+        limit: int = 5,
+        score_threshold: float | None = None,
+    ) -> list[ScoredPoint]:
+        """Search Qdrant collection for nearest vectors matching tenant_id and optional document_id."""
+        must_conditions = [
+            FieldCondition(
+                key="tenant_id",
+                match=MatchValue(value=tenant_id),
+            )
+        ]
+        if document_id is not None:
+            must_conditions.append(
+                FieldCondition(
+                    key="document_id",
+                    match=MatchValue(value=document_id),
+                )
+            )
+
+        query_filter = Filter(must=must_conditions)
+
+        results = await self.client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            query_filter=query_filter,
+            limit=limit,
+            score_threshold=score_threshold,
+            with_payload=True,
+        )
+
+        logger.info(
+            "Vector search completed",
+            collection_name=collection_name,
+            tenant_id=tenant_id,
+            document_id=document_id,
+            result_count=len(results),
+        )
+        return results
 
     async def close(self) -> None:
         """Close underlying AsyncQdrantClient connection."""
