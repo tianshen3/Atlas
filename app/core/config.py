@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
+    #LLM Provider Configuration (OpenAI-Compatible Free/Hosted Cloud APIs)
+    LLM_PROVIDER: str = "openrouter"
+    LLM_API_KEY: str = ""
+    LLM_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
+    LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
+    LLM_TIMEOUT_SECONDS: float = 30.0
+    LLM_MAX_TOKENS: int = 1000
+    LLM_TEMPERATURE: float = 0.2
+    LLM_MAX_RETRIES: int = 3
+
+
 
 #Instantiating settings globally
 settings = Settings()
