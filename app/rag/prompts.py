@@ -24,17 +24,22 @@ Your sole purpose is to answer the user's question accurately using ONLY the ver
 def format_context_block(chunks: list[SearchResultChunk]) -> str:
     formatted_snippets = []
 
-    for idx, chunk in enumerate(chunks, start = 1):
+    for idx, chunk in enumerate(chunks, start=1):
+        meta = chunk.metadata or {}
+        file_name = meta.get("file_name", "Unknown")
+        page_number = meta.get("page_number", "N/A")
+
         snippet = (
             f"[Source {idx}]\n"
             f"Document ID: {chunk.document_id}\n"
-            f"File Name: {chunk.file_name}\n"
-            f"Page Number: {chunk.page_numeber}\n"
+            f"File Name: {file_name}\n"
+            f"Page Number: {page_number}\n"
             f"Content:\n{chunk.content}"
         )
         formatted_snippets.append(snippet)
-    
+
     return "\n\n".join(formatted_snippets)
+
 
 
 def build_grounded_messages(query: str, chunks: list[SearchResultChunk]) -> list[dict[str, str]] :
