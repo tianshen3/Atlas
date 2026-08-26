@@ -161,7 +161,7 @@ class ChatService:
 
         sources_payload = json.dumps({
             "event": "sources",
-            "data": [s.model_dump() for s in sources],
+            "data": [s.model_dump(mode="json") for s in sources],
         })
         yield f"data: {sources_payload}\n\n"
 
