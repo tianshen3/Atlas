@@ -1,4 +1,5 @@
-from typing import Optional, List
+import json
+from typing import Optional, List, AsyncGenerator
 from app.core.config import settings
 from app.core.logging import logger
 from app.rag.generator import LLMGeneratorEngine
@@ -102,3 +103,71 @@ class ChatService:
             provider_used=self.generator_engine.provider,
             total_sources=len(sources),
         )
+
+    async def generate_chat_response_stream(
+        self,
+        request: ChatRequest,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Execute end-to-end grounded chat generation workflow yielding SSE event frames.
+
+        Args:
+            request: Validated ChatRequest DTO containing query, tenant_id, and filters.
+
+        Yields:
+            JSON string SSE frames (event: sources / event: token).
+        """
+        logger.info(
+            "Executing ChatService streaming grounded generation",
+            query=request.query,
+            tenant_id=request.tenant_id,
+            top_k=request.top_k,
+        )
+
+        search_req = SearchRequest(
+            query=request.query,
+            tenant_id=request.tenant_id,
+            document_id=request.document_id,
+            top_k=request.top_k,
+        )
+        search_res = await self.retrieval_service.search(search_req)
+        chunks = search_res.results
+
+        if not chunks:
+            logger.info("Empty retrieval context for streaming query. Short-circuiting.", query=request.query)
+            sources_payload = json.dumps({"event": "sources", "data": []})
+            yield f"data: {sources_payload}\n\n"
+
+            fallback_answer = (
+                "I cannot find sufficient information in the provided enterprise documents "
+                "to answer this question."
+            )
+            token_payload = json.dumps({"event": "token", "data": fallback_answer})
+            yield f"data: {token_payload}\n\n"
+            return
+
+        sources: List[CitationSource] = []
+        for idx, chunk in enumerate(chunks, start=1):
+            meta = chunk.metadata or {}
+            source = CitationSource(
+                source_index=idx,
+                document_id=chunk.document_id,
+                chunk_id=chunk.chunk_id,
+                file_name=meta.get("file_name", "Unknown"),
+                page_number=meta.get("page_number", "N/A"),
+                score=chunk.score,
+            )
+            sources.append(source)
+
+        sources_payload = json.dumps({
+            "event": "sources",
+            "data": [s.model_dump() for s in sources],
+        })
+        yield f"data: {sources_payload}\n\n"
+
+        messages = build_grounded_messages(query=request.query, chunks=chunks)
+
+        async for token in self.generator_engine.generate_answer_stream(messages, model=request.model):
+            token_payload = json.dumps({"event": "token", "data": token})
+            yield f"data: {token_payload}\n\n"
+
