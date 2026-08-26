@@ -92,3 +92,88 @@ async def test_chat_service_empty_retrieval_short_circuit():
 
     # Ensure LLM generator was NOT invoked when retrieval was empty
     mock_generator.generate_answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_chat_service_generate_response_stream_success():
+    doc_id = uuid.uuid4()
+    chunk_id = uuid.uuid4()
+
+    mock_chunk = SearchResultChunk(
+        chunk_id=chunk_id,
+        document_id=doc_id,
+        chunk_index=0,
+        content="ATLAS uses FastAPI and Qdrant for RAG.",
+        score=0.94,
+        metadata={"file_name": "atlas_arch.pdf", "page_number": 3},
+    )
+
+    mock_retrieval = AsyncMock()
+    mock_retrieval.search.return_value = SearchResponse(
+        query="What tech stack does ATLAS use?",
+        results=[mock_chunk],
+        total_results=1,
+    )
+
+    async def mock_stream(*args, **kwargs):
+        yield "ATLAS "
+        yield "uses "
+        yield "Qdrant."
+
+    mock_generator = MagicMock()
+    mock_generator.default_model = "meta-llama/llama-3.3-70b-instruct:free"
+    mock_generator.provider = "openrouter"
+    mock_generator.generate_answer_stream.side_effect = mock_stream
+
+    service = ChatService(
+        retrieval_service=mock_retrieval,
+        generator_engine=mock_generator,
+    )
+
+    request = ChatRequest(
+        query="What tech stack does ATLAS use?",
+        tenant_id="tenant_123",
+    )
+
+    frames = []
+    async for frame in service.generate_chat_response_stream(request):
+        frames.append(frame)
+
+    assert len(frames) == 4  # 1 sources frame + 3 token frames
+    assert "data: {\"event\": \"sources\"" in frames[0]
+    assert "atlas_arch.pdf" in frames[0]
+    assert "data: {\"event\": \"token\", \"data\": \"ATLAS \"}" in frames[1]
+    assert "data: {\"event\": \"token\", \"data\": \"uses \"}" in frames[2]
+    assert "data: {\"event\": \"token\", \"data\": \"Qdrant.\"}" in frames[3]
+
+
+@pytest.mark.asyncio
+async def test_chat_service_generate_response_stream_empty_retrieval():
+    mock_retrieval = AsyncMock()
+    mock_retrieval.search.return_value = SearchResponse(
+        query="Unrelated query",
+        results=[],
+        total_results=0,
+    )
+
+    mock_generator = MagicMock()
+
+    service = ChatService(
+        retrieval_service=mock_retrieval,
+        generator_engine=mock_generator,
+    )
+
+    request = ChatRequest(
+        query="Unrelated query",
+        tenant_id="tenant_123",
+    )
+
+    frames = []
+    async for frame in service.generate_chat_response_stream(request):
+        frames.append(frame)
+
+    assert len(frames) == 2  # 1 empty sources frame + 1 fallback token frame
+    assert "data: {\"event\": \"sources\", \"data\": []}" in frames[0]
+    assert "cannot find sufficient information" in frames[1]
+    mock_generator.generate_answer_stream.assert_not_called()
+
