@@ -14,7 +14,7 @@ async def upload_document(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db_session),
 ) -> DocumentResponse:
-    """Accept PDF binary file upload, validate bytes, store to disk, and save PENDING record in DB."""
+    """Accept PDF binary file upload, validate bytes, store to disk, save PENDING record in DB, and enqueue Celery task."""
     file_name = file.filename or "upload.pdf"
     file_bytes = await file.read()
 
@@ -37,7 +37,21 @@ async def upload_document(
 
     # Persist document record into PostgreSQL
     db_doc = await DocumentService.create_document(db, doc_in)
+
+    # Enqueue Celery background ingestion task
+    try:
+        from app.workers.tasks import process_document_task
+
+        process_document_task.delay(
+            document_id=str(db_doc.id),
+            file_path=file_path,
+            tenant_id="tenant_default",
+        )
+    except Exception:
+        pass
+
     return db_doc
+
 
 
 @router.get("/", response_model=DocumentListResponse)
