@@ -1,7 +1,10 @@
+from typing import Any, Dict, List, Optional, Union
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
     VectorParams,
+    SparseVectorParams,
+    SparseIndexParams,
     PointStruct,
     PayloadSchemaType,
     Filter,
@@ -42,15 +45,23 @@ class QdrantVectorService:
         self,
         collection_name: str = "atlas_chunks_v1",
         vector_size: int = 384,
+        sparse: bool = False,
     ) -> None:
         """Create Qdrant collection if not existing, and build payload indexes."""
         exists = await self.client.collection_exists(collection_name)
         if not exists:
-            logger.info("Creating Qdrant collection", collection_name=collection_name, vector_size=vector_size)
-            await self.client.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-            )
+            logger.info("Creating Qdrant collection", collection_name=collection_name, vector_size=vector_size, sparse=sparse)
+            if sparse:
+                await self.client.create_collection(
+                    collection_name=collection_name,
+                    vectors_config={"dense": VectorParams(size=vector_size, distance=Distance.COSINE)},
+                    sparse_vectors_config={"sparse": SparseVectorParams(index=SparseIndexParams(on_disk=False))},
+                )
+            else:
+                await self.client.create_collection(
+                    collection_name=collection_name,
+                    vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+                )
 
             # Create payload keyword indexes for fast tenant and document filtering
             await self.client.create_payload_index(
@@ -84,11 +95,12 @@ class QdrantVectorService:
     async def search_vectors(
         self,
         collection_name: str,
-        query_vector: list[float],
+        query_vector: Any,
         tenant_id: str,
         document_id: str | None = None,
         limit: int = 5,
         score_threshold: float | None = None,
+        using: str | None = None,
     ) -> list[ScoredPoint]:
         """Search Qdrant collection for nearest vectors matching tenant_id and optional document_id."""
         must_conditions = [
@@ -107,14 +119,18 @@ class QdrantVectorService:
 
         query_filter = Filter(must=must_conditions)
 
-        results = await self.client.search(
-            collection_name=collection_name,
-            query_vector=query_vector,
-            query_filter=query_filter,
-            limit=limit,
-            score_threshold=score_threshold,
-            with_payload=True,
-        )
+        search_kwargs: Dict[str, Any] = {
+            "collection_name": collection_name,
+            "query_vector": query_vector,
+            "query_filter": query_filter,
+            "limit": limit,
+            "score_threshold": score_threshold,
+            "with_payload": True,
+        }
+        if using is not None:
+            search_kwargs["using"] = using
+
+        results = await self.client.search(**search_kwargs)
 
         logger.info(
             "Vector search completed",
@@ -122,9 +138,11 @@ class QdrantVectorService:
             tenant_id=tenant_id,
             document_id=document_id,
             result_count=len(results),
+            using=using,
         )
         return results
 
     async def close(self) -> None:
         """Close underlying AsyncQdrantClient connection."""
         await self.client.close()
+
