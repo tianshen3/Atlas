@@ -69,7 +69,14 @@ class CrossEncoderReranker:
 
     def _get_model(self):
         if self._model is None:
-            from sentence_transformers import CrossEncoder
+            try:
+                from sentence_transformers import CrossEncoder
+            except (ImportError, ModuleNotFoundError) as exc:
+                logger.error("sentence_transformers_not_installed")
+                raise RuntimeError(
+                    "The 'sentence-transformers' package is required for Neural Reranking. "
+                    "Please install it by running: uv add sentence-transformers"
+                ) from exc
 
             logger.info("loading_cross_encoder_model", model_name=self.model_name)
             self._model = CrossEncoder(self.model_name)
