@@ -25,6 +25,11 @@ dependencies = [
     "numpy>=2.4.6",
     "qdrant-client>=1.19.0",
     "openai>=3.3.1",
+    "pyjwt>=2.13.0",
+    "passlib[bcrypt]>=1.7.4",
+    "celery>=5.6.3",
+    "redis>=8.1.0",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
