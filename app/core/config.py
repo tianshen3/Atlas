@@ -25,11 +25,12 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "atlas_db"
 
-    #VectorDB(Qdrant) & Cache(Redis)
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_URL: str = "redis://localhost:6379/0"
+    SECRET_KEY: str = "atlas_super_secret_key_v1"
 
     #LLM Provider Configuration (OpenAI-Compatible Free/Hosted Cloud APIs)
     LLM_PROVIDER: str = "openrouter"
