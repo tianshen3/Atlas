@@ -1,24 +1,38 @@
-# ATLAS
+# ATLAS Platform
 
 Enterprise Hybrid Retrieval-Augmented Generation (RAG) Platform.
 
-## Quick Start
+## Repository Architecture
+
+```text
+/atlas
+  /backend     # FastAPI Python microservices & RAG engine
+  /frontend    # Next.js TypeScript web application
+```
+
+## Quick Start Guide
+
+### 1. Backend Setup
 
 ```bash
-# 1. Start local infrastructure services (PostgreSQL, Qdrant, Redis)
+cd backend
+
+# Start local infrastructure (PostgreSQL, Qdrant, Redis)
 docker compose -f deploy/docker-compose.yml up -d
 
-# 2. Setup virtual environment & install dependencies
+# Setup virtual environment & install dependencies
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
+
+# Start FastAPI application
+uvicorn app.main:app --reload --port 8000
 ```
 
-## Stack
+### 2. Frontend Setup
 
-* **API Gateway**: FastAPI & Uvicorn
-* **Database**: PostgreSQL & Alembic
-* **Vector DB**: Qdrant (Dense + BM25 Sparse)
-* **Background Tasks**: Celery & Redis
-* **Embeddings & Reranker**: FastEmbed (`bge-small-en-v1.5`) & Cross-Encoder (`ms-marco-MiniLM-L-6-v2`)
-* **LLM Engine**: OpenAI (`gpt-4o`)
+```bash
+cd frontend
+npm install
+npm run dev
+```
