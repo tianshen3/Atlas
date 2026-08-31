@@ -9,21 +9,14 @@ export function getStoredToken(): string | null {
   return localStorage.getItem('atlas_token');
 }
 
-export function setStoredToken(token: string, tenantId: string): void {
+export function setStoredToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem('atlas_token', token);
-  localStorage.setItem('atlas_tenant_id', tenantId);
 }
 
 export function clearStoredToken(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('atlas_token');
-  localStorage.removeItem('atlas_tenant_id');
-}
-
-export function getStoredTenantId(): string {
-  if (typeof window === 'undefined') return 'tenant_default';
-  return localStorage.getItem('atlas_tenant_id') || 'tenant_default';
 }
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

@@ -14,11 +14,7 @@ interface Message {
   isStreaming?: boolean;
 }
 
-interface ChatWindowProps {
-  tenantId: string;
-}
-
-export const ChatWindow: React.FC<ChatWindowProps> = ({ tenantId }) => {
+export const ChatWindow: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -78,7 +74,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ tenantId }) => {
     await streamChatCompletion(
       {
         query,
-        tenant_id: tenantId,
+        tenant_id: 'tenant_default',
         document_id: selectedDocId || undefined,
         top_k: 5,
       },

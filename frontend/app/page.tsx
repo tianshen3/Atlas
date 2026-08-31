@@ -5,28 +5,24 @@ import { Navbar } from '@/components/Navbar';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { DocumentManager } from '@/components/documents/DocumentManager';
 import { ChatWindow } from '@/components/chat/ChatWindow';
-import { getStoredToken, getStoredTenantId } from '@/lib/api/client';
+import { getStoredToken } from '@/lib/api/client';
 import { logout } from '@/lib/api/auth';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [tenantId, setTenantId] = useState<string>('tenant_default');
   const [activeTab, setActiveTab] = useState<'documents' | 'chat'>('documents');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   useEffect(() => {
     const token = getStoredToken();
-    const storedTenant = getStoredTenantId();
     if (token) {
       setIsAuthenticated(true);
-      setTenantId(storedTenant);
     }
     setIsInitializing(false);
   }, []);
 
-  const handleLoginSuccess = (token: string, tenant: string) => {
+  const handleLoginSuccess = () => {
     setIsAuthenticated(true);
-    setTenantId(tenant);
   };
 
   const handleLogout = () => {
@@ -46,7 +42,6 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
       <Navbar
         isAuthenticated={isAuthenticated}
-        tenantId={tenantId}
         onLogout={handleLogout}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -60,7 +55,7 @@ export default function Home() {
         ) : activeTab === 'documents' ? (
           <DocumentManager />
         ) : (
-          <ChatWindow tenantId={tenantId} />
+          <ChatWindow />
         )}
       </main>
     </div>

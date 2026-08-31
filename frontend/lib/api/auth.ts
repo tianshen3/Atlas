@@ -5,14 +5,13 @@ export async function login(credentials: LoginRequest): Promise<TokenResponse> {
   const response = await apiFetch<TokenResponse>('/auth/token', {
     method: 'POST',
     body: JSON.stringify({
-      username: credentials.username,
+      email: credentials.email,
       password: credentials.password,
-      tenant_id: credentials.tenant_id || 'tenant_default',
     }),
   });
 
   if (response.access_token) {
-    setStoredToken(response.access_token, response.tenant_id);
+    setStoredToken(response.access_token);
   }
 
   return response;

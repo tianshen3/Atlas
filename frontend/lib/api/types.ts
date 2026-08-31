@@ -1,13 +1,12 @@
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
-  tenant_id?: string;
 }
 
 export interface TokenResponse {
   access_token: string;
   token_type: string;
-  tenant_id: string;
+  role: string;
 }
 
 export interface DocumentResponse {

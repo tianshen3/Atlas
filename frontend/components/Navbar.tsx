@@ -4,7 +4,6 @@ import React from 'react';
 
 interface NavbarProps {
   isAuthenticated: boolean;
-  tenantId: string;
   onLogout: () => void;
   activeTab: 'documents' | 'chat';
   setActiveTab: (tab: 'documents' | 'chat') => void;
@@ -12,7 +11,6 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   isAuthenticated,
-  tenantId,
   onLogout,
   activeTab,
   setActiveTab,
@@ -50,9 +48,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {isAuthenticated && (
         <div className="flex items-center space-x-4">
-          <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded border border-gray-200 font-mono">
-            Tenant: {tenantId}
-          </span>
           <button
             onClick={onLogout}
             className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50"
