@@ -21,25 +21,35 @@ class QdrantVectorService:
 
     def __init__(
         self,
+        url: str | None = None,
+        api_key: str | None = None,
         host: str | None = None,
         port: int | None = None,
         grpc_port: int | None = None,
         prefer_grpc: bool = False,
     ) -> None:
+        self.url = url or settings.QDRANT_URL
+        self.api_key = api_key or settings.QDRANT_API_KEY
         self.host = host or settings.QDRANT_HOST
         self.port = port or settings.QDRANT_PORT
         self.grpc_port = grpc_port
         self.prefer_grpc = prefer_grpc
 
-        init_kwargs = {
-            "host": self.host,
-            "port": self.port,
-        }
-        if self.grpc_port is not None:
-            init_kwargs["grpc_port"] = self.grpc_port
-            init_kwargs["prefer_grpc"] = self.prefer_grpc
+        if self.url:
+            self.client = AsyncQdrantClient(
+                url=self.url,
+                api_key=self.api_key,
+            )
+        else:
+            init_kwargs = {
+                "host": self.host,
+                "port": self.port,
+            }
+            if self.grpc_port is not None:
+                init_kwargs["grpc_port"] = self.grpc_port
+                init_kwargs["prefer_grpc"] = self.prefer_grpc
 
-        self.client = AsyncQdrantClient(**init_kwargs)
+            self.client = AsyncQdrantClient(**init_kwargs)
 
     async def init_collection(
         self,
