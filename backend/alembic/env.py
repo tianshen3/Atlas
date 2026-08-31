@@ -33,7 +33,14 @@ target_metadata = Base.metadata
 
 
 #postgres url
-postgres_url = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+if settings.DATABASE_URL:
+    postgres_url = settings.DATABASE_URL
+    if postgres_url.startswith("postgres://"):
+        postgres_url = postgres_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif postgres_url.startswith("postgresql://"):
+        postgres_url = postgres_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    postgres_url = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
 config.set_main_option("sqlalchemy.url", postgres_url)
 
 def run_migrations_offline() -> None:
