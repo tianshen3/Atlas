@@ -85,14 +85,20 @@ class DocumentService:
 
     @staticmethod
     async def list_documents(
-        db: AsyncSession, skip: int = 0, limit: int = 20
+        db: AsyncSession, skip: int = 0, limit: int = 20, owner_id=None
     ) -> Tuple[List[Document], int]:
-        """Fetch a paginated list of Document records and total record count."""
-        query = select(Document).offset(skip).limit(limit)
+        """Fetch a paginated list of Document records. Optionally filter by owner_id."""
+        query = select(Document)
+        count_query = select(func.count(Document.id))
+
+        if owner_id is not None:
+            query = query.where(Document.owner_id == owner_id)
+            count_query = count_query.where(Document.owner_id == owner_id)
+
+        query = query.offset(skip).limit(limit)
         result = await db.execute(query)
         items = list(result.scalars().all())
 
-        count_query = select(func.count(Document.id))
         total_result = await db.execute(count_query)
         total = total_result.scalar_one()
 
