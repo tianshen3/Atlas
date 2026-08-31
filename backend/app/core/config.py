@@ -1,6 +1,6 @@
 from pydantic_settings import SettingsConfigDict
 from pydantic_settings import BaseSettings
-
+from typing import Optional
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -24,12 +24,23 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "atlas_db"
+    # Supabase URI
+    DATABASE_URL: Optional[str] = None
 
+    #Qdrant Settings
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
+    # Qdrant Clound Credentials
+    QDRANT_URL: Optional[str] = None
+    QDRANT_API_KEY: Optional[str] = None
+
+    #Redis Settings
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    # Upstash URL for Redis Service
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    #Security
     SECRET_KEY: str = "atlas_super_secret_key_v1"
 
     #LLM Provider Configuration (OpenAI-Compatible Free/Hosted Cloud APIs)
