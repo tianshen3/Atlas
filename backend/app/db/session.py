@@ -32,3 +32,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush = False,
 )
 
+
+async def get_db():
+    """FastAPI dependency that yields an async DB session."""
+    async with AsyncSessionLocal() as session:
+        yield session
+
