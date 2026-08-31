@@ -22,12 +22,7 @@ def create_application() -> FastAPI:
     # configuring cors middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3001",
-        ],
+        allow_origins=[str(origin) for origin in settings.CORS_ORIGINS],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -37,7 +32,12 @@ def create_application() -> FastAPI:
     app.add_exception_handler(AtlasException, atlas_exception_handler)
     app.add_exception_handler(Exception, global_exception_handler)
 
-    # mountin v1 api router
+    # root health check endpoint for cloud load balancers and Render
+    @app.get("/health", tags=["Health"])
+    async def root_health_check():
+        return {"status": "HEALTHY", "version": settings.VERSION}
+
+    # mounting v1 api router
     app.include_router(api_router, prefix = settings.API_V1_STR)
 
     return app
