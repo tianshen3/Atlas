@@ -47,8 +47,13 @@ async def upload_document(
             file_path=file_path,
             tenant_id="tenant_default",
         )
-    except Exception:
-        pass
+    except Exception as celery_exc:
+        import structlog as _log
+        _log.get_logger(__name__).warning(
+            "celery_task_dispatch_failed",
+            document_id=str(db_doc.id),
+            error=str(celery_exc),
+        )
 
     return db_doc
 

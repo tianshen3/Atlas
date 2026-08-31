@@ -122,8 +122,10 @@ class DocumentService:
         qdrant_service: Optional[QdrantVectorService] = None,
         embedding_engine: Optional[DenseEmbeddingEngine] = None,
         collection_name: str = "atlas_chunks_v1",
+        tenant_id: str = "tenant_default",
+        filename: str = "",
     ) -> List[Chunk]:
-        """Bulk insert extracted text chunks for a document into PostgreSQL, generate embeddings, upsert to Qdrant, and update status to COMPLETED."""
+        """Bulk insert extracted text chunks into PostgreSQL, generate dense embeddings, upsert to Qdrant with correct payload schema, and update document status to COMPLETED."""
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
             raise ValidationException(
@@ -152,17 +154,22 @@ class DocumentService:
         if qdrant_service is not None and embedding_engine is not None:
             texts = [c.text for c in chunk_objects]
             vectors = embedding_engine.embed_documents(texts)
-            
+
             points = [
                 PointStruct(
                     id=str(chunk.id),
                     vector=vector,
                     payload={
+                        # Keys must match what retrieval_service.py reads
                         "document_id": str(document_id),
+                        "tenant_id": tenant_id,       # Required for Qdrant filter
                         "chunk_index": chunk.chunk_index,
-                        "text": chunk.text,
-                        "page_number": chunk.metadata_json.get("page_number") if chunk.metadata_json else None,
+                        "content": chunk.text,         # Fixed: was "text", reads as "content"
                         "token_count": chunk.token_count,
+                        "metadata": {                  # Nested for CitationSource
+                            "page_number": chunk.metadata_json.get("page_number") if chunk.metadata_json else None,
+                            "file_name": filename or doc.filename,
+                        },
                     },
                 )
                 for chunk, vector in zip(chunk_objects, vectors)
@@ -170,6 +177,11 @@ class DocumentService:
             await qdrant_service.upsert_chunk_vectors(
                 collection_name=collection_name, points=points
             )
+
+            # Store Qdrant point IDs back on chunk rows for traceability
+            for chunk, point in zip(chunk_objects, points):
+                chunk.qdrant_point_id = str(point.id)
+            await db.commit()
 
         return chunk_objects
 
