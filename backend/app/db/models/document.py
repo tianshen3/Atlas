@@ -55,6 +55,11 @@ class Document(Base, TimestampMixin):
         index=True,
         nullable=False,
     )
+    error_message: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+    )
 
     owner: Mapped[Optional["User"]] = relationship(
         "User",
