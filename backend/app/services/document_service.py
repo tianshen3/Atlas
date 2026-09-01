@@ -192,13 +192,13 @@ class DocumentService:
             for chunk_info in chunks_data
         ]
 
+        # Step A: Persist chunk rows to Postgres with PROCESSING status (not yet COMPLETED)
         db.add_all(chunk_objects)
-        doc.status = DocumentStatus.COMPLETED.value
         await db.commit()
         for chunk in chunk_objects:
             await db.refresh(chunk)
 
-        # Upsert vector points to Qdrant if services are supplied
+        # Step B: Generate embeddings + upsert to Qdrant BEFORE marking COMPLETED
         if qdrant_service is not None and embedding_engine is not None:
             texts = [c.text for c in chunk_objects]
             vectors = embedding_engine.embed_documents(texts)
@@ -222,6 +222,7 @@ class DocumentService:
                 )
                 for chunk, vector in zip(chunk_objects, vectors)
             ]
+            # This must succeed before we mark COMPLETED
             await qdrant_service.upsert_chunk_vectors(
                 collection_name=collection_name, points=points
             )
@@ -229,7 +230,10 @@ class DocumentService:
             # Store Qdrant point IDs back on chunk rows for traceability
             for chunk, point in zip(chunk_objects, points):
                 chunk.qdrant_point_id = str(point.id)
-            await db.commit()
+
+        # Step C: Only mark COMPLETED after Qdrant upsert has succeeded
+        doc.status = DocumentStatus.COMPLETED.value
+        await db.commit()
 
         return chunk_objects
 
