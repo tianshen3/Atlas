@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Dict, Any
-import fitz
+import pymupdf as fitz
 import structlog
 
 import tiktoken
