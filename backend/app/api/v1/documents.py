@@ -64,33 +64,16 @@ async def upload_document(
     db_doc = await DocumentService.create_document(db, doc_in)
     doc_id = str(db_doc.id)
 
-    # Attempt Celery dispatch; fall back to in-process BackgroundTask if unavailable
-    celery_dispatched = False
-    try:
-        from app.workers.tasks import process_document_task
-        process_document_task.delay(
-            document_id=doc_id,
-            file_path=file_path,
-            tenant_id="tenant_default",
-        )
-        celery_dispatched = True
-        logger.info("celery_task_dispatched", document_id=doc_id)
-    except Exception as celery_exc:
-        logger.warning(
-            "celery_dispatch_failed_using_background_task",
-            document_id=doc_id,
-            error=str(celery_exc),
-        )
+    # Execute ingestion pipeline via FastAPI BackgroundTasks
+    async def _inline_pipeline() -> None:
+        try:
+            await run_ingestion_pipeline(doc_id, file_path, "tenant_default")
+        except Exception as exc:
+            logger.error("inline_pipeline_failed", document_id=doc_id, error=str(exc))
+            await mark_document_failed(doc_id)
 
-    if not celery_dispatched:
-        async def _inline_pipeline() -> None:
-            try:
-                await run_ingestion_pipeline(doc_id, file_path, "tenant_default")
-            except Exception as exc:
-                logger.error("inline_pipeline_failed", document_id=doc_id, error=str(exc))
-                await mark_document_failed(doc_id)
-
-        background_tasks.add_task(_inline_pipeline)
+    background_tasks.add_task(_inline_pipeline)
+    logger.info("background_ingestion_task_queued", document_id=doc_id)
 
     return db_doc
 
