@@ -115,16 +115,49 @@ class DocumentService:
     
     @staticmethod
     async def delete_document(
-        db: AsyncSession, document_id: UUID, delete_file_from_disk: bool = True) -> bool: 
+        db: AsyncSession,
+        document_id: UUID,
+        delete_file_from_disk: bool = True,
+        qdrant_service: Optional["QdrantVectorService"] = None,
+    ) -> bool:
+        """
+        Delete a document and all associated data:
+          1. PDF file from disk (optional, default True)
+          2. All Qdrant vector points for the document (prevents orphaned embeddings)
+          3. Chunk rows from Postgres (via cascade on Document deletion)
+          4. Document row from Postgres
 
+        Args:
+            db: Async database session.
+            document_id: UUID of the document to delete.
+            delete_file_from_disk: Whether to also remove the raw file from disk.
+            qdrant_service: Optional QdrantVectorService instance for vector cleanup.
+        """
         doc = await DocumentService.get_document_by_id(db, document_id)
 
-        if not doc : return False
+        if not doc:
+            return False
 
+        # Step 1: Delete PDF from disk
         if delete_file_from_disk and doc.file_path:
             p = Path(doc.file_path)
-            if p.exists(): p.unlink()
+            if p.exists():
+                p.unlink()
 
+        # Step 2: Delete all Qdrant vector points for this document
+        if qdrant_service is not None:
+            try:
+                await qdrant_service.delete_vectors_by_document_id(str(document_id))
+            except Exception as e:
+                # Non-fatal: log and continue — Postgres delete still happens
+                import structlog
+                structlog.get_logger(__name__).warning(
+                    "qdrant_vector_delete_failed",
+                    document_id=str(document_id),
+                    error=str(e),
+                )
+
+        # Step 3 + 4: Delete Chunk rows (cascade) + Document row from Postgres
         await db.delete(doc)
         await db.commit()
         return True

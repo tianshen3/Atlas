@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db_session
+from app.api.deps import get_current_user, get_db_session, get_qdrant_service
 from app.schemas.document import DocumentCreate, DocumentListResponse, DocumentResponse
 from app.services.document_service import DocumentService
 from app.workers.pipeline import mark_document_failed, run_ingestion_pipeline
@@ -132,8 +132,9 @@ async def delete_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
+    qdrant_service=Depends(get_qdrant_service),
 ):
-    """Delete document. Non-admins can only delete their own documents."""
+    """Delete document record, its disk file, and all associated Qdrant embeddings."""
     doc = await DocumentService.get_document_by_id(db, document_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Document '{document_id}' not found.")
@@ -141,4 +142,4 @@ async def delete_document(
     if current_user["role"] != "admin" and str(doc.owner_id) != current_user["id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
-    await DocumentService.delete_document(db, document_id)
+    await DocumentService.delete_document(db, document_id, qdrant_service=qdrant_service)

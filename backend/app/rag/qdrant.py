@@ -11,6 +11,7 @@ from qdrant_client.models import (
     FieldCondition,
     MatchValue,
     ScoredPoint,
+    FilterSelector,
 )
 from app.core.config import settings
 from app.core.logging import logger
@@ -157,6 +158,35 @@ class QdrantVectorService:
             using=using,
         )
         return results
+
+    async def delete_vectors_by_document_id(
+        self,
+        document_id: str,
+        collection_name: str = "atlas_chunks_v1",
+    ) -> None:
+        """
+        Delete all Qdrant vector points belonging to a given document_id.
+        Called during document deletion to prevent orphaned embeddings from
+        appearing in future search results.
+        """
+        await self.client.delete(
+            collection_name=collection_name,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="document_id",
+                            match=MatchValue(value=document_id),
+                        )
+                    ]
+                )
+            ),
+        )
+        logger.info(
+            "Deleted Qdrant vectors for document",
+            collection_name=collection_name,
+            document_id=document_id,
+        )
 
     async def close(self) -> None:
         """Close underlying AsyncQdrantClient connection."""
