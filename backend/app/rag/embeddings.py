@@ -18,7 +18,14 @@ class DenseEmbeddingEngine:
 
     def __init__(self, model_name: str = "models/gemini-embedding-001") -> None:
         self.model_name = model_name
-        self.api_key = settings.LLM_API_KEY
+        gemini_key = getattr(settings, "GEMINI_API_KEY", None)
+        if gemini_key:
+            self.api_key = gemini_key
+        elif settings.LLM_API_KEY and not settings.LLM_API_KEY.startswith("gsk_"):
+            self.api_key = settings.LLM_API_KEY
+        else:
+            self.api_key = ""
+
         self._fastembed_model: Optional[TextEmbedding] = None
 
         if self.api_key:

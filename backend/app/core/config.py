@@ -61,10 +61,13 @@ class Settings(BaseSettings):
     #Security
     SECRET_KEY: str  # Required — no default. App will refuse to start if missing from .env.
 
-    LLM_PROVIDER: str = "gemini"
+    # Google Gemini Embeddings Key (optional override if LLM_API_KEY is Groq/OpenAI)
+    GEMINI_API_KEY: Optional[str] = ""
+
+    LLM_PROVIDER: str = "groq"
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-3.5-flash"
-    LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    LLM_MODEL: str = "qwen/qwen3.8-27b"
+    LLM_BASE_URL: str = "https://api.groq.com/openai/v1"
     LLM_TIMEOUT_SECONDS: float = 30.0
     LLM_MAX_TOKENS: int = 1000
     LLM_TEMPERATURE: float = 0.2
