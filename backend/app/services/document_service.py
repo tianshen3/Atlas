@@ -242,6 +242,10 @@ class DocumentService:
         doc.status = DocumentStatus.COMPLETED.value
         await db.commit()
 
+        # Free transient memory buffers back to OS immediately
+        import gc
+        gc.collect()
+
         return chunk_objects
 
 
