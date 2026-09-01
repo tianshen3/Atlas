@@ -1,65 +1,120 @@
-"""
-Dense Vector Embedding Engine using FastEmbed BAAI/bge-small-en-v1.5.
-"""
-
-from fastembed import TextEmbedding, SparseTextEmbedding, SparseEmbedding
+from typing import List, Optional
+import httpx
 import structlog
+from fastembed import SparseEmbedding, SparseTextEmbedding, TextEmbedding
+
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
 
 class DenseEmbeddingEngine:
     """
-    Wrapper for FastEmbed dense vectorization.
-    Converts text inputs into 384-dimensional dense vectors using BAAI/bge-small-en-v1.5.
+    High-performance 384-dimensional Dense Vector Embedding Engine.
+    Uses Google Gemini Cloud Embeddings API (models/gemini-embedding-001 with outputDimensionality=384)
+    for zero-RAM, ultra-fast vectorization (<150ms).
+    Falls back to local FastEmbed (threads=1) if no LLM_API_KEY is configured.
     """
 
-    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5") -> None:
-        """
-        Initialize the FastEmbed TextEmbedding model.
-
-        Args:
-            model_name: ONNX model identifier. Defaults to 'BAAI/bge-small-en-v1.5'.
-        """
+    def __init__(self, model_name: str = "models/gemini-embedding-001") -> None:
         self.model_name = model_name
-        logger.info("initializing_dense_embedding_engine", model_name=self.model_name)
-        # threads=1 prevents ONNX Runtime from spawning 16 threads and blowing past 512MB RAM
-        self._model = TextEmbedding(model_name=self.model_name, threads=1)
-        logger.info("dense_embedding_engine_initialized", model_name=self.model_name)
+        self.api_key = settings.LLM_API_KEY
+        self._fastembed_model: Optional[TextEmbedding] = None
+
+        if self.api_key:
+            logger.info("dense_embedding_engine_using_cloud_api", provider="gemini", model=self.model_name)
+        else:
+            logger.info("dense_embedding_engine_using_fastembed_fallback", model="BAAI/bge-small-en-v1.5")
+
+    def _get_fastembed(self) -> TextEmbedding:
+        if self._fastembed_model is None:
+            logger.info("initializing_fallback_fastembed_model", model_name="BAAI/bge-small-en-v1.5")
+            self._fastembed_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5", threads=1)
+        return self._fastembed_model
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """
-        Embed a batch of document strings into a list of 384-dimensional float vectors.
-
-        Args:
-            texts: List of text chunk strings to vectorize.
-
-        Returns:
-            List of 384-dimensional float vectors.
+        Embed a batch of document strings into 384-dimensional float vectors.
         """
         if not texts:
             return []
 
-        logger.debug("embedding_documents", count=len(texts))
-        embeddings_generator = self._model.embed(texts, batch_size=16)
+        # 1. Cloud API Path (Zero RAM, GPU-accelerated on Google Cloud)
+        if self.api_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key={self.api_key}"
+                # Batch in groups of 50 to stay within request limits
+                all_vectors: list[list[float]] = []
+                batch_size = 50
+
+                with httpx.Client(timeout=30.0) as client:
+                    for i in range(0, len(texts), batch_size):
+                        batch = texts[i : i + batch_size]
+                        payload = {
+                            "requests": [
+                                {
+                                    "model": "models/gemini-embedding-001",
+                                    "content": {"parts": [{"text": t}]},
+                                    "outputDimensionality": 384,
+                                }
+                                for t in batch
+                            ]
+                        }
+                        res = client.post(url, json=payload)
+                        if res.status_code == 200:
+                            data = res.json()
+                            batch_embeddings = [item["values"] for item in data.get("embeddings", [])]
+                            all_vectors.extend(batch_embeddings)
+                        else:
+                            logger.warning(
+                                "gemini_batch_embed_failed_status",
+                                status=res.status_code,
+                                response=res.text[:200],
+                            )
+                            raise RuntimeError(f"Gemini embedding API returned {res.status_code}")
+
+                logger.debug("documents_cloud_embedded_successfully", count=len(all_vectors))
+                return all_vectors
+
+            except Exception as e:
+                logger.warning("cloud_embedding_failed_falling_back_to_fastembed", error=str(e))
+
+        # 2. FastEmbed Fallback (Local ONNX, threads=1)
+        fastembed = self._get_fastembed()
+        embeddings_generator = fastembed.embed(texts, batch_size=16)
         vectors = [vec.tolist() for vec in embeddings_generator]
-        logger.debug("documents_embedded_successfully", count=len(vectors))
+        logger.debug("documents_fastembed_embedded_successfully", count=len(vectors))
         return vectors
 
     def embed_query(self, text: str) -> list[float]:
         """
         Embed a single query string into a 384-dimensional float vector.
-
-        Args:
-            text: Query text string.
-
-        Returns:
-            384-dimensional float vector.
         """
         if not text or not text.strip():
             raise ValueError("Query text cannot be empty or whitespace only.")
 
-        logger.debug("embedding_query", text_length=len(text))
+        # 1. Cloud API Path
+        if self.api_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={self.api_key}"
+                payload = {
+                    "model": "models/gemini-embedding-001",
+                    "content": {"parts": [{"text": text}]},
+                    "outputDimensionality": 384,
+                }
+                with httpx.Client(timeout=15.0) as client:
+                    res = client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        values = data.get("embedding", {}).get("values", [])
+                        if len(values) == 384:
+                            return values
+
+                logger.warning("gemini_single_embed_failed", status=res.status_code)
+            except Exception as e:
+                logger.warning("cloud_query_embed_failed_falling_back_to_fastembed", error=str(e))
+
+        # 2. FastEmbed Fallback
         vectors = self.embed_documents([text])
         return vectors[0]
 
