@@ -47,7 +47,7 @@ class ChatService:
             document_id=request.document_id,
             top_k=request.top_k,
         )
-        search_res = await self.retrieval_service.search(search_req, enable_hybrid=True)
+        search_res = await self.retrieval_service.search(search_req, enable_hybrid=False)
         chunks = search_res.results
 
         # 2. Empty Retrieval Guard: Short-circuit if no relevant context found
@@ -130,7 +130,7 @@ class ChatService:
             document_id=request.document_id,
             top_k=request.top_k,
         )
-        search_res = await self.retrieval_service.search(search_req, enable_hybrid=True)
+        search_res = await self.retrieval_service.search(search_req, enable_hybrid=False)
         chunks = search_res.results
 
         if not chunks:

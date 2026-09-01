@@ -61,11 +61,10 @@ class Settings(BaseSettings):
     #Security
     SECRET_KEY: str  # Required — no default. App will refuse to start if missing from .env.
 
-    #LLM Provider Configuration (OpenAI-Compatible Free/Hosted Cloud APIs)
-    LLM_PROVIDER: str = "openrouter"
+    LLM_PROVIDER: str = "gemini"
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
-    LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
+    LLM_MODEL: str = "gemini-3.5-flash"
+    LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     LLM_TIMEOUT_SECONDS: float = 30.0
     LLM_MAX_TOKENS: int = 1000
     LLM_TEMPERATURE: float = 0.2
