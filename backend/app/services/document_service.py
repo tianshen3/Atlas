@@ -87,8 +87,15 @@ class DocumentService:
     async def get_document_by_checksum(
         db: AsyncSession, checksum: str
     ) -> Optional[Document]:
-        """Fetch an existing Document by SHA-256 checksum for deduplication."""
-        query = select(Document).where(Document.checksum == checksum)
+        """Fetch an existing COMPLETED Document by SHA-256 checksum for deduplication.
+        
+        Only matches COMPLETED documents — FAILED or PROCESSING docs are ignored
+        so users can safely re-upload a file that previously failed ingestion.
+        """
+        query = select(Document).where(
+            Document.checksum == checksum,
+            Document.status == "COMPLETED",
+        )
         result = await db.execute(query)
         return result.scalar_one_or_none()
 

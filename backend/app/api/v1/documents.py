@@ -61,6 +61,20 @@ async def upload_document(
         owner_id=UUID(current_user["id"]),
     )
 
+    # Purge any stale FAILED/PROCESSING records with the same file so re-uploads work cleanly
+    from sqlalchemy import select as _select
+    from app.db.models.document import Document as _Doc
+    stale_result = await db.execute(
+        _select(_Doc).where(
+            _Doc.checksum == file_hash,
+            _Doc.status.in_(["FAILED", "PROCESSING"]),
+        )
+    )
+    for stale in stale_result.scalars().all():
+        logger.info("purging_stale_document", document_id=str(stale.id), status=stale.status)
+        await db.delete(stale)
+    await db.commit()
+
     db_doc = await DocumentService.create_document(db, doc_in)
     doc_id = str(db_doc.id)
 
