@@ -36,7 +36,7 @@ class ChatService:
         logger.info(
             "Executing ChatService grounded generation",
             query=request.query,
-            tenant_id=request.tenant_id,
+            tenant_id="tenant_default",
             top_k=request.top_k,
         )
 
@@ -120,7 +120,7 @@ class ChatService:
         logger.info(
             "Executing ChatService streaming grounded generation",
             query=request.query,
-            tenant_id=request.tenant_id,
+            tenant_id="tenant_default",
             top_k=request.top_k,
         )
 
