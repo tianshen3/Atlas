@@ -3,32 +3,21 @@ Authentication REST Router.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.security import create_access_token, verify_password
-from app.db.session import get_db
+from app.api.deps import get_db_session
 from app.db.models.user import User
+from app.schemas.auth import LoginRequest, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    role: str
 
 
 @router.post("/token", response_model=TokenResponse)
 async def login_for_access_token(
     request: LoginRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_session),
 ) -> TokenResponse:
     """
     Authenticate user credentials against the database and issue a JWT Bearer token.

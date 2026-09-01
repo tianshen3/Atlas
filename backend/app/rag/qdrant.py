@@ -140,7 +140,13 @@ class QdrantVectorService:
         if using is not None:
             search_kwargs["using"] = using
 
-        results = await self.client.search(**search_kwargs)
+        if hasattr(self.client, "search"):
+            results = await self.client.search(**search_kwargs)
+        else:
+            search_kwargs["query"] = query_vector
+            del search_kwargs["query_vector"]
+            res = await self.client.query_points(**search_kwargs)
+            results = res.points
 
         logger.info(
             "Vector search completed",

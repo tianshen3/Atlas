@@ -38,6 +38,17 @@ async def upload_document(
 
     # SHA-256 checksum + persist to disk
     file_hash = DocumentService.compute_sha256(file_bytes)
+
+    # Deduplication check: if an identical file already exists, return it immediately
+    existing_doc = await DocumentService.get_document_by_checksum(db, file_hash)
+    if existing_doc:
+        logger.info(
+            "duplicate_document_upload_skipped",
+            document_id=str(existing_doc.id),
+            checksum=file_hash,
+        )
+        return existing_doc
+
     file_path = DocumentService.save_file_to_disk(file_bytes, file_name)
 
     # Build DB payload — set owner from authenticated user

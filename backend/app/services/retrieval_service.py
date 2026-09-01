@@ -1,6 +1,8 @@
 from typing import List, Optional
 from uuid import UUID
 
+from qdrant_client.http.models import SparseVector
+
 from app.core.logging import logger
 from app.rag.embeddings import DenseEmbeddingEngine, SparseEmbeddingEngine
 from app.rag.qdrant import QdrantVectorService
@@ -92,10 +94,10 @@ class RetrievalService:
             scored_candidates: List[tuple] = []
             try:
                 sparse_vector = self.sparse_embedding_engine.embed_query(request.query)
-                sparse_qdrant_vec = {
-                    "indices": sparse_vector.indices.tolist() if hasattr(sparse_vector.indices, "tolist") else list(sparse_vector.indices),
-                    "values": sparse_vector.values.tolist() if hasattr(sparse_vector.values, "tolist") else list(sparse_vector.values),
-                }
+                sparse_qdrant_vec = SparseVector(
+                    indices=sparse_vector.indices.tolist() if hasattr(sparse_vector.indices, "tolist") else list(sparse_vector.indices),
+                    values=sparse_vector.values.tolist() if hasattr(sparse_vector.values, "tolist") else list(sparse_vector.values),
+                )
                 sparse_points = await self.qdrant_service.search_vectors(
                     collection_name=collection_name,
                     query_vector=sparse_qdrant_vec,

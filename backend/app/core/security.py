@@ -3,22 +3,22 @@ Security utilities for password hashing and JWT access token handling.
 """
 
 from datetime import datetime, timedelta, timezone
-import hashlib
 from typing import Any, Dict, Optional
+
+import bcrypt
 import jwt
+
 from app.core.config import settings
 
 
 def get_password_hash(password: str) -> str:
-    """Generate secure SHA256 PBKDF2 password hash."""
-    salt = settings.SECRET_KEY.encode("utf-8")
-    pwd_hash = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
-    return pwd_hash.hex()
+    """Generate a secure bcrypt password hash with an automatic per-user salt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify plain text password against hash."""
-    return get_password_hash(plain_password) == hashed_password
+    """Verify plain text password against a bcrypt hash."""
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 def create_access_token(

@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     try:
         from app.rag.qdrant import QdrantVectorService
         qs = QdrantVectorService()
-        await qs.init_collection(collection_name="atlas_chunks_v1", vector_size=384, sparse=False)
+        await qs.init_collection(collection_name="atlas_chunks_v1", vector_size=384, sparse=True)
         logger.info("Qdrant collection initialised on startup")
     except Exception as e:
         # Non-fatal: app still starts even if Qdrant is temporarily unavailable

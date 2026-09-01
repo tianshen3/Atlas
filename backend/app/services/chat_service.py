@@ -43,7 +43,7 @@ class ChatService:
         # 1. Execute vector search via RetrievalService
         search_req = SearchRequest(
             query=request.query,
-            tenant_id=request.tenant_id,
+            tenant_id="tenant_default",  # internal constant — not exposed in API
             document_id=request.document_id,
             top_k=request.top_k,
         )
@@ -126,7 +126,7 @@ class ChatService:
 
         search_req = SearchRequest(
             query=request.query,
-            tenant_id=request.tenant_id,
+            tenant_id="tenant_default",  # internal constant — not exposed in API
             document_id=request.document_id,
             top_k=request.top_k,
         )
@@ -144,6 +144,8 @@ class ChatService:
             )
             token_payload = json.dumps({"event": "token", "data": fallback_answer})
             yield f"data: {token_payload}\n\n"
+            done_payload = json.dumps({"event": "done", "data": "[DONE]"})
+            yield f"data: {done_payload}\n\n"
             return
 
         sources: List[CitationSource] = []
@@ -167,7 +169,16 @@ class ChatService:
 
         messages = build_grounded_messages(query=request.query, chunks=chunks)
 
-        async for token in self.generator_engine.generate_answer_stream(messages, model=request.model):
-            token_payload = json.dumps({"event": "token", "data": token})
-            yield f"data: {token_payload}\n\n"
+        try:
+            async for token in self.generator_engine.generate_answer_stream(messages, model=request.model):
+                token_payload = json.dumps({"event": "token", "data": token})
+                yield f"data: {token_payload}\n\n"
+        except Exception as e:
+            logger.error("Error during streaming generation", error=str(e))
+            err_payload = json.dumps({"event": "error", "data": f"Generation interrupted: {str(e)}"})
+            yield f"data: {err_payload}\n\n"
+
+        # Signal to the client that the stream is complete
+        done_payload = json.dumps({"event": "done", "data": "[DONE]"})
+        yield f"data: {done_payload}\n\n"
 

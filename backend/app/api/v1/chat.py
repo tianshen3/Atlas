@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import get_chat_service
+from app.api.deps import get_chat_service, get_current_user
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.chat_service import ChatService
 
@@ -12,9 +12,9 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 async def ask_question(
     request: ChatRequest, 
     chat_service: ChatService = Depends(get_chat_service),
+    current_user: dict = Depends(get_current_user),
 ) -> ChatResponse:
     response = await chat_service.generate_chat_response(request)
-
     return response
 
 
@@ -23,6 +23,7 @@ async def ask_question(
 async def stream_chat_completions (
     request: ChatRequest, 
     chat_service: ChatService = Depends(get_chat_service),
+    current_user: dict = Depends(get_current_user),
 ) -> StreamingResponse:
     event_generator = chat_service.generate_chat_response_stream(request)
     return StreamingResponse(
@@ -33,4 +34,3 @@ async def stream_chat_completions (
             "Connection": "keep-alive",
         }
     )
-    

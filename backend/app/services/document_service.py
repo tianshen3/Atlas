@@ -84,6 +84,15 @@ class DocumentService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_document_by_checksum(
+        db: AsyncSession, checksum: str
+    ) -> Optional[Document]:
+        """Fetch an existing Document by SHA-256 checksum for deduplication."""
+        query = select(Document).where(Document.checksum == checksum)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def list_documents(
         db: AsyncSession, skip: int = 0, limit: int = 20, owner_id=None
     ) -> Tuple[List[Document], int]:

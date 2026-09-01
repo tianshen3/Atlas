@@ -111,10 +111,16 @@ def get_qdrant_service() -> QdrantVectorService:
 def get_retrieval_service() -> RetrievalService:
     global _retrieval_service
     if _retrieval_service is None:
+        reranker = None
+        if settings.ENABLE_RERANK:
+            from app.rag.reranker import CrossEncoderReranker
+            reranker = CrossEncoderReranker()
+
         _retrieval_service = RetrievalService(
             embedding_engine=get_dense_engine(),
             sparse_embedding_engine=get_sparse_engine(),
             qdrant_service=get_qdrant_service(),
+            reranker=reranker,
         )
     return _retrieval_service
 

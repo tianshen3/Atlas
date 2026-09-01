@@ -32,9 +32,7 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush = False,
 )
 
-
-async def get_db():
-    """FastAPI dependency that yields an async DB session."""
-    async with AsyncSessionLocal() as session:
-        yield session
+# NOTE: Use `get_db_session` from `app.api.deps` as the FastAPI dependency for DB sessions.
+# The session factory `AsyncSessionLocal` is available here for use in workers/pipeline
+# that operate outside the FastAPI request lifecycle.
 

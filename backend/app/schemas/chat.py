@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, ConfigDict
 class ChatRequest(BaseModel):
     """Data Transfer Object for Chat generation requests."""
     query: str = Field(..., min_length=1, description="Natural language user question")
-    tenant_id: str = Field(..., min_length=1, description="Tenant identifier for multi-tenant data isolation")
     document_id: Optional[UUID] = Field(default=None, description="Optional document ID filter for targeted grounding")
     top_k: int = Field(default=5, ge=1, le=50, description="Maximum number of context chunks to retrieve")
     model: Optional[str] = Field(default=None, description="Optional LLM model override")

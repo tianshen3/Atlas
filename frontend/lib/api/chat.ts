@@ -59,6 +59,8 @@ export async function streamChatCompletion(
               callbacks.onSources?.(parsed.data);
             } else if (parsed.event === 'token' && typeof parsed.data === 'string') {
               callbacks.onToken?.(parsed.data);
+            } else if (parsed.event === 'error' && typeof parsed.data === 'string') {
+              callbacks.onError?.(new Error(parsed.data));
             }
           } catch (err) {
             console.error('Failed to parse SSE payload:', err, jsonStr);
@@ -75,6 +77,8 @@ export async function streamChatCompletion(
           callbacks.onSources?.(parsed.data);
         } else if (parsed.event === 'token' && typeof parsed.data === 'string') {
           callbacks.onToken?.(parsed.data);
+        } else if (parsed.event === 'error' && typeof parsed.data === 'string') {
+          callbacks.onError?.(new Error(parsed.data));
         }
       } catch {
         // Ignore partial trailing data error

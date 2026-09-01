@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "ATLAS Enterprise Hybrid RAG"
     VERSION: str = "1.0.0"
-    ENVIRONMENT: str = "production"
+    ENVIRONMENT: str = "development"
     API_V1_STR: str = "/api/v1"
 
     #Server Settings
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     #Security
-    SECRET_KEY: str = "atlas_super_secret_key_v1"
+    SECRET_KEY: str  # Required — no default. App will refuse to start if missing from .env.
 
     #LLM Provider Configuration (OpenAI-Compatible Free/Hosted Cloud APIs)
     LLM_PROVIDER: str = "openrouter"
@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 1000
     LLM_TEMPERATURE: float = 0.2
     LLM_MAX_RETRIES: int = 3
+
+    # Reranker
+    ENABLE_RERANK: bool = False  # Set to True in .env to enable CrossEncoder neural reranking
 
 
 
