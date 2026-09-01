@@ -23,7 +23,8 @@ class DenseEmbeddingEngine:
         """
         self.model_name = model_name
         logger.info("initializing_dense_embedding_engine", model_name=self.model_name)
-        self._model = TextEmbedding(model_name=self.model_name)
+        # threads=1 prevents ONNX Runtime from spawning 16 threads and blowing past 512MB RAM
+        self._model = TextEmbedding(model_name=self.model_name, threads=1)
         logger.info("dense_embedding_engine_initialized", model_name=self.model_name)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -40,7 +41,7 @@ class DenseEmbeddingEngine:
             return []
 
         logger.debug("embedding_documents", count=len(texts))
-        embeddings_generator = self._model.embed(texts)
+        embeddings_generator = self._model.embed(texts, batch_size=16)
         vectors = [vec.tolist() for vec in embeddings_generator]
         logger.debug("documents_embedded_successfully", count=len(vectors))
         return vectors
@@ -78,7 +79,8 @@ class SparseEmbeddingEngine:
         """
         self.model_name = model_name
         logger.info("initializing_sparse_embedding_engine", model_name=self.model_name)
-        self._model = SparseTextEmbedding(model_name=self.model_name)
+        # threads=1 keeps memory footprint minimal
+        self._model = SparseTextEmbedding(model_name=self.model_name, threads=1)
         logger.info("sparse_embedding_engine_initialized", model_name=self.model_name)
 
     def embed_documents(self, texts: list[str]) -> list[SparseEmbedding]:
@@ -95,7 +97,7 @@ class SparseEmbeddingEngine:
             return []
 
         logger.debug("embedding_documents_sparse", count=len(texts))
-        embeddings_generator = self._model.embed(texts)
+        embeddings_generator = self._model.embed(texts, batch_size=16)
         vectors = list(embeddings_generator)
         logger.debug("documents_sparse_embedded_successfully", count=len(vectors))
         return vectors

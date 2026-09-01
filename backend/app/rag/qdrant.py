@@ -40,11 +40,13 @@ class QdrantVectorService:
             self.client = AsyncQdrantClient(
                 url=self.url,
                 api_key=self.api_key,
+                timeout=60.0,
             )
         else:
             init_kwargs = {
                 "host": self.host,
                 "port": self.port,
+                "timeout": 60.0,
             }
             if self.grpc_port is not None:
                 init_kwargs["grpc_port"] = self.grpc_port
