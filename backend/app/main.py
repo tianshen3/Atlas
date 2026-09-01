@@ -32,8 +32,18 @@ async def lifespan(app: FastAPI):
         # Non-fatal: app still starts even if Qdrant is temporarily unavailable
         logger.warning("Qdrant init_collection failed on startup", error=str(e))
 
+    # Warm up the ONNX embedding model — loads it into memory NOW so uploads don't hang
+    try:
+        import asyncio
+        from app.workers.pipeline import _get_embedding_engine
+        await asyncio.to_thread(_get_embedding_engine)
+        logger.info("Embedding engine warmed up on startup")
+    except Exception as e:
+        logger.warning("Embedding engine warmup failed on startup", error=str(e))
+
     yield
     # Shutdown (no teardown needed)
+
 
 
 def create_application() -> FastAPI:

@@ -5,6 +5,7 @@ fallback when Redis/Celery is unavailable.
 """
 
 import structlog
+from functools import lru_cache
 from pathlib import Path
 from uuid import UUID
 
@@ -14,6 +15,21 @@ from app.services.document_service import DocumentService
 from app.workers.pdf_processor import chunk_document_pages, extract_text_from_pdf
 
 logger = structlog.get_logger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_embedding_engine() -> DenseEmbeddingEngine:
+    """Module-level singleton — ONNX model is loaded once and reused for all uploads."""
+    logger.info("pipeline_initializing_embedding_engine")
+    return DenseEmbeddingEngine()
+
+
+@lru_cache(maxsize=1)
+def _get_qdrant_service() -> QdrantVectorService:
+    """Module-level singleton — Qdrant client connection is shared across uploads."""
+    logger.info("pipeline_initializing_qdrant_service")
+    return QdrantVectorService()
+
 
 
 async def run_ingestion_pipeline(
@@ -71,8 +87,9 @@ async def run_ingestion_pipeline(
             await db.commit()
 
     # Step 4-7: Embed → Postgres → Qdrant → COMPLETED
-    embedding_engine = DenseEmbeddingEngine()
-    qdrant_service = QdrantVectorService()
+    # Use module-level singletons — ONNX model loaded ONCE at startup, not per-upload
+    embedding_engine = _get_embedding_engine()
+    qdrant_service = _get_qdrant_service()
 
     # Verify Qdrant connectivity before embedding — surface errors early in logs
     try:
