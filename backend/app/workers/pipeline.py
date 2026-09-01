@@ -74,19 +74,49 @@ async def run_ingestion_pipeline(
     embedding_engine = DenseEmbeddingEngine()
     qdrant_service = QdrantVectorService()
 
-    async with AsyncSessionLocal() as db:
-        await DocumentService.save_chunks_to_db(
-            db=db,
-            document_id=doc_uuid,
-            chunks_data=chunks,
-            qdrant_service=qdrant_service,
-            embedding_engine=embedding_engine,
-            collection_name="atlas_chunks_v1",
-            tenant_id=tenant_id,
-            filename=original_filename,
+    # Verify Qdrant connectivity before embedding — surface errors early in logs
+    try:
+        collection_info = await qdrant_service.client.get_collection("atlas_chunks_v1")
+        logger.info(
+            "qdrant_collection_verified",
+            points_count=collection_info.points_count,
+            vector_size=collection_info.config.params.vectors.size,
         )
+    except Exception as qdrant_err:
+        logger.error(
+            "qdrant_connection_failed_before_embed",
+            document_id=document_id,
+            error=str(qdrant_err),
+        )
+        raise  # Propagates to mark_document_failed in the caller
 
-    logger.info("pipeline_completed", document_id=document_id, total_chunks=len(chunks))
+    async with AsyncSessionLocal() as db:
+        try:
+            saved_chunks = await DocumentService.save_chunks_to_db(
+                db=db,
+                document_id=doc_uuid,
+                chunks_data=chunks,
+                qdrant_service=qdrant_service,
+                embedding_engine=embedding_engine,
+                collection_name="atlas_chunks_v1",
+                tenant_id=tenant_id,
+                filename=original_filename,
+            )
+            qdrant_ids = [c.qdrant_point_id for c in saved_chunks]
+            logger.info(
+                "pipeline_completed",
+                document_id=document_id,
+                total_chunks=len(saved_chunks),
+                qdrant_points_stored=len([q for q in qdrant_ids if q]),
+            )
+        except Exception as embed_err:
+            logger.error(
+                "pipeline_embed_or_upsert_failed",
+                document_id=document_id,
+                error=str(embed_err),
+            )
+            raise  # Propagates to mark_document_failed in the caller
+
     return len(chunks)
 
 
