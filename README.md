@@ -22,57 +22,6 @@ ATLAS provides an end-to-end framework for ingesting enterprise documents, index
 
 ## Architecture
 
-The diagram below illustrates the end-to-end component interaction, dual ingestion pathways, and retrieval data flow within ATLAS:
-
-```mermaid
-flowchart TD
-    User([User / Browser]) <--> Frontend["Next.js 16 / React 19 Frontend"]
-    Frontend <-->|"REST / SSE Streaming"| API["FastAPI Backend Gateway"]
-
-    subgraph Ingestion["Document Ingestion Pipeline"]
-        API --> DocSvc["Document Service"]
-        DocSvc --> Disk["Local File Storage"]
-        
-        DocSvc -.->|"Default: Single-Service"| BgTasks["FastAPI BackgroundTasks<br/>(In-Process, Zero-Broker)"]
-        DocSvc -.->|"Optional: Distributed"| RedisQueue["Redis 7 Queue<br/>(Broker & Result Backend)"]
-        RedisQueue --> CeleryWorker["Celery Worker<br/>(--pool=solo, concurrency=1)"]
-
-        BgTasks --> Parser["PyMuPDF Parser<br/>(Text normalization & cleanup)"]
-        CeleryWorker --> Parser
-        Parser --> Chunker["Native Tiktoken Chunker<br/>(Sentence-aware, cl100k_base)"]
-    end
-
-    subgraph Embeddings["Dual Embedding Strategies"]
-        Chunker --> CloudEmbed["Google Gemini Cloud Embeddings<br/>(384-d, Zero Container RAM)"]
-        Chunker -.->|"Fallback / Local"| LocalEmbed["FastEmbed ONNX Engine<br/>(BAAI/bge-small-en-v1.5, threads=1)"]
-    end
-
-    subgraph Storage["Data & Vector Persistence"]
-        DocSvc <--> Postgres[("PostgreSQL 16 / Supabase<br/>(Users, Documents, Chunks)")]
-        CloudEmbed <--> VectorDB[("Qdrant Vector DB<br/>(atlas_chunks_v1, payload-indexed)")]
-        LocalEmbed <--> VectorDB
-    end
-
-    subgraph QueryRAG["RAG & LLM Engine"]
-        API --> ChatSvc["Chat Service"]
-        ChatSvc --> RetSvc["Retrieval Service"]
-        
-        RetSvc --> CloudEmbed
-        RetSvc -.-> LocalEmbed
-
-        RetSvc --> FastPath["Dense Fast-Path Retrieval<br/>(Default low-latency search)"]
-        RetSvc -.->|"Optional: Hybrid"| RRF["Reciprocal Rank Fusion<br/>(RRF k=60, Dense + BM25)"]
-        RRF -.->|"Optional: Rerank"| Reranker["Cross-Encoder Neural Reranker<br/>(ms-marco-MiniLM-L-6-v2)"]
-
-        FastPath --> Grounding["Grounded Prompt Builder<br/>(&lt;context&gt; XML Sandboxing & Guard)"]
-        RRF --> Grounding
-        Reranker --> Grounding
-
-        Grounding --> LLMEngine["LLM Generator Engine<br/>(Groq / Gemini / OpenRouter)"]
-        LLMEngine -->|"SSE Stream / JSON"| ChatSvc
-    end
-```
-
 ### Architectural Design Philosophy: Constrained-Resource Profiles
 
 ATLAS is intentionally engineered around constrained-resource deployment profiles (e.g., 512MB RAM micro-containers and serverless environments). Rather than requiring heavyweight distributed infrastructure for every deployment, the architecture cleanly decouples:
@@ -392,17 +341,6 @@ npm run build
 
 ---
 
-## Engineering Knowledge Base
-
-ATLAS maintains a comprehensive, production-tested [Engineering Problem & Solution Knowledge Base](docs/problems_and_solutions.md) documenting 25+ real-world engineering hurdles encountered while architecting, scaling, and hardening the platform:
-
-* **Memory Optimization**: Taming Celery worker fork OOMs under 512MB RAM, suppressing ONNX multi-threading CPU/memory spikes, and migrating from heavy AST frameworks (LlamaIndex) to zero-RAM Gemini Cloud embeddings.
-* **Ingestion Integrity**: Resolving false-completed document states, trapping PostgreSQL crashes from PDF null bytes (`\0`), fixing hyphenated line breaks, and eliminating deduplication race conditions.
-* **Retrieval & Latency**: Eliminating dense semantic keyword blindspots with RRF, resolving score scale mismatches between dense cosine and BM25 sparse vectors, and establishing fast-path direct search for conversational chat.
-* **Reliability & Security**: Upstream LLM rate limit handling via automated model cascades, graceful SSE client disconnect handling, and multi-tenant vector leakage prevention via payload schema indexes.
-
----
-
 ## Current Status
 
 ATLAS is under active development. Current operational capabilities include:
@@ -420,3 +358,9 @@ ATLAS is under active development. Current operational capabilities include:
 * Advanced RAG evaluation metrics (RAGAS / TruLens integration).
 * Dynamic collection creation per tenant.
 * Expanded agentic tool integration for web search and multi-step reasoning.
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
