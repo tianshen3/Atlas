@@ -1,26 +1,100 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-workspace: #0B0E0D;
+  --surface-primary: #111513;
+  --surface-secondary: #151A17;
+  --surface-tertiary: #1C221F;
+  --border-subtle: #242A26;
+  --border-muted: #1A201C;
+  --border-focus: #6F9B82;
+  --text-primary: #E4E8E4;
+  --text-secondary: #89938C;
+  --text-muted: #626B65;
+  --accent: #6F9B82;
+  --accent-hover: #82AA91;
+  --accent-subtle: rgba(111, 155, 130, 0.12);
+  --grid-line: rgba(255, 255, 255, 0.025);
+  
+  --background: var(--bg-workspace);
+  --foreground: var(--text-primary);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-workspace: var(--bg-workspace);
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-muted: var(--border-muted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100%;
+  background-color: #0B0E0D;
+  color: #E4E8E4;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Subtle 36px neutral grid background */
+.technical-grid-bg {
+  background-color: #0B0E0D;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+  background-position: center top;
+}
+
+/* WCAG 2.2 Level AA High-Contrast Focus Ring */
+*:focus-visible {
+  outline: 2px solid #6F9B82 !important;
+  outline-offset: 2px !important;
+}
+
+/* Accessible touch / pointer minimum baseline */
+.min-touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Scrollbar styling for dark technical palette */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0E0D;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #242A26;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #343C37;
+}
+
+/* WCAG 2.2 Reduced Motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

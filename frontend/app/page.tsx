@@ -10,15 +10,18 @@ import { logout } from '@/lib/api/auth';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'documents' | 'chat'>('documents');
+  const [activeTab, setActiveTab] = useState<'chat' | 'documents'>('chat');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   useEffect(() => {
-    const token = getStoredToken();
-    if (token) {
-      setIsAuthenticated(true);
-    }
-    setIsInitializing(false);
+    // Asynchronously resolve stored authentication state on client mount
+    Promise.resolve().then(() => {
+      const token = getStoredToken();
+      if (token) {
+        setIsAuthenticated(true);
+      }
+      setIsInitializing(false);
+    });
   }, []);
 
   const handleLoginSuccess = () => {
@@ -32,14 +35,19 @@ export default function Home() {
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-xs text-gray-500 font-mono">
-        Initializing ATLAS Client...
+      <div 
+        role="status"
+        aria-live="polite"
+        className="min-h-screen bg-[#0B0E0D] text-[#89938C] flex flex-col items-center justify-center font-mono text-xs gap-3"
+      >
+        <span className="w-2 h-2 rounded-full bg-[#6F9B82] animate-pulse" aria-hidden="true" />
+        <span>INITIALIZING ATLAS WORKSPACE...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0B0E0D] text-[#E4E8E4] flex flex-col font-sans technical-grid-bg">
       <Navbar
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}
@@ -47,15 +55,18 @@ export default function Home() {
         setActiveTab={setActiveTab}
       />
 
-      <main className="flex-1 p-6 md:p-8 flex flex-col items-center">
+      <main 
+        id="main-content"
+        className="flex-1 p-4 md:p-6 flex flex-col items-center"
+      >
         {!isAuthenticated ? (
-          <div className="w-full flex flex-col items-center justify-center my-auto py-12">
+          <div className="w-full flex-1 flex flex-col items-center justify-center py-12">
             <LoginForm onLoginSuccess={handleLoginSuccess} />
           </div>
-        ) : activeTab === 'documents' ? (
-          <DocumentManager />
-        ) : (
+        ) : activeTab === 'chat' ? (
           <ChatWindow />
+        ) : (
+          <DocumentManager />
         )}
       </main>
     </div>
