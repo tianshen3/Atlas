@@ -26,15 +26,15 @@ The diagram below illustrates the end-to-end component interaction, dual ingesti
 
 ```mermaid
 flowchart TD
-    User([User / Browser]) <--> Frontend[Next.js 16 / React 19 Frontend]
-    Frontend <-->|REST / SSE Streaming| API[FastAPI Backend Gateway]
+    User([User / Browser]) <--> Frontend["Next.js 16 / React 19 Frontend"]
+    Frontend <-->|"REST / SSE Streaming"| API["FastAPI Backend Gateway"]
 
     subgraph Ingestion["Document Ingestion Pipeline"]
-        API --> DocSvc[Document Service]
-        DocSvc --> Disk[Local File Storage]
+        API --> DocSvc["Document Service"]
+        DocSvc --> Disk["Local File Storage"]
         
-        DocSvc -.->|Default: Single-Service| BgTasks["FastAPI BackgroundTasks<br/>(In-Process / Zero-Broker)"]
-        DocSvc -.->|Optional: Distributed| RedisQueue["Redis 7 Queue<br/>(Broker & Result Backend)"]
+        DocSvc -.->|"Default: Single-Service"| BgTasks["FastAPI BackgroundTasks<br/>(In-Process, Zero-Broker)"]
+        DocSvc -.->|"Optional: Distributed"| RedisQueue["Redis 7 Queue<br/>(Broker & Result Backend)"]
         RedisQueue --> CeleryWorker["Celery Worker<br/>(--pool=solo, concurrency=1)"]
 
         BgTasks --> Parser["PyMuPDF Parser<br/>(Text normalization & cleanup)"]
@@ -44,7 +44,7 @@ flowchart TD
 
     subgraph Embeddings["Dual Embedding Strategies"]
         Chunker --> CloudEmbed["Google Gemini Cloud Embeddings<br/>(384-d, Zero Container RAM)"]
-        Chunker -.->|Fallback / Local| LocalEmbed["FastEmbed ONNX Engine<br/>(BAAI/bge-small-en-v1.5 / BM25, threads=1)"]
+        Chunker -.->|"Fallback / Local"| LocalEmbed["FastEmbed ONNX Engine<br/>(BAAI/bge-small-en-v1.5, threads=1)"]
     end
 
     subgraph Storage["Data & Vector Persistence"]
@@ -54,22 +54,22 @@ flowchart TD
     end
 
     subgraph QueryRAG["RAG & LLM Engine"]
-        API --> ChatSvc[Chat Service]
-        ChatSvc --> RetSvc[Retrieval Service]
+        API --> ChatSvc["Chat Service"]
+        ChatSvc --> RetSvc["Retrieval Service"]
         
         RetSvc --> CloudEmbed
         RetSvc -.-> LocalEmbed
 
         RetSvc --> FastPath["Dense Fast-Path Retrieval<br/>(Default low-latency search)"]
-        RetSvc -.->|Optional Hybrid| RRF["Reciprocal Rank Fusion (RRF k=60)<br/>Dense + BM25 Sparse"]
-        RRF -.->|Optional Rerank| Reranker["Cross-Encoder Neural Reranker<br/>(ms-marco-MiniLM-L-6-v2)"]
+        RetSvc -.->|"Optional: Hybrid"| RRF["Reciprocal Rank Fusion<br/>(RRF k=60, Dense + BM25)"]
+        RRF -.->|"Optional: Rerank"| Reranker["Cross-Encoder Neural Reranker<br/>(ms-marco-MiniLM-L-6-v2)"]
 
         FastPath --> Grounding["Grounded Prompt Builder<br/>(&lt;context&gt; XML Sandboxing & Guard)"]
         RRF --> Grounding
         Reranker --> Grounding
 
         Grounding --> LLMEngine["LLM Generator Engine<br/>(Groq / Gemini / OpenRouter)"]
-        LLMEngine -->|SSE Stream / JSON| ChatSvc
+        LLMEngine -->|"SSE Stream / JSON"| ChatSvc
     end
 ```
 
@@ -104,11 +104,9 @@ ATLAS is intentionally engineered around constrained-resource deployment profile
 
 ## How It Works
 
-### Document Ingestion Flow
+### Ingestion Flow
 
 ATLAS implements an asynchronous, multi-stage document processing pipeline designed to handle PDF extraction, sentence-aware tokenization, dense vector embedding, and dual relational/vector persistence.
-
-#### Text Ingestion Flow
 
 ```text
 1. Client Upload:            POST /api/v1/documents/ (PDF file stream, multipart/form-data)
@@ -125,51 +123,7 @@ ATLAS implements an asynchronous, multi-stage document processing pipeline desig
 12. Completion & Cleanup:    Update Document status -> COMPLETED in PostgreSQL -> Trigger explicit gc.collect()
 ```
 
-#### Ingestion Architecture & Execution Diagram
-
-```mermaid
-flowchart TD
-    Client([Client / Frontend]) -->|POST /api/v1/documents/<br/>(multipart/form-data PDF)| UploadAPI["FastAPI Upload Router<br/>(backend/app/api/v1/documents.py)"]
-
-    subgraph Step1["1. Validation & Integrity Check"]
-        UploadAPI --> Validate["Binary Header Validation<br/>(Magic bytes: %PDF, Max: 50MB)"]
-        Validate --> Checksum["Compute SHA-256 Checksum<br/>(DocumentService.compute_sha256)"]
-        Checksum --> DedupCheck{"Existing COMPLETED<br/>document with hash?"}
-        DedupCheck -->|Yes| FastReturn["Return Existing Document Record<br/>(Skip redundant processing)"]
-        DedupCheck -->|No| PurgeStale["Purge Stale FAILED/PROCESSING Rows<br/>(Allows seamless retry on re-upload)"]
-        PurgeStale --> SaveDisk["Persist PDF to Local Disk<br/>(storage/documents/{uuid}_{filename})"]
-        SaveDisk --> CreatePending["Insert Document Row<br/>Status: PENDING in PostgreSQL"]
-    end
-
-    subgraph Step2["2. Worker Dispatch (Dual Execution Modes)"]
-        CreatePending --> WorkerBranch{"Execution Profile"}
-        WorkerBranch -->|Default: Single-Service| BgTaskDispatch["FastAPI BackgroundTasks<br/>(In-process, zero broker dependencies)"]
-        WorkerBranch -->|Distributed Setup| CeleryDispatch["Celery Worker Dispatch<br/>(Redis broker queue: process_document_task)"]
-    end
-
-    subgraph Step3["3. Centralized Ingestion Pipeline (pipeline.py)"]
-        BgTaskDispatch --> ExtractText["PyMuPDF (fitz) Text Extraction<br/>(clean_text: strip null-bytes & de-hyphenate)"]
-        CeleryDispatch --> ExtractText
-        ExtractText --> ChunkPages["Native Tiktoken Sentence Chunking<br/>(chunk_size=510, overlap=50, cl100k_base)"]
-        ChunkPages --> MarkProcessing["Update Document Status &rarr; PROCESSING<br/>(PostgreSQL)"]
-        MarkProcessing --> CheckQdrant["Verify Qdrant Connectivity<br/>(Collection: atlas_chunks_v1)"]
-        CheckQdrant --> EmbedChunks["Dense Embedding Generation<br/>(Cloud Gemini 384-d or Local FastEmbed)"]
-        EmbedChunks --> InsertChunks["Persist Chunks to PostgreSQL<br/>(Generate UUID chunk.id rows)"]
-        InsertChunks --> UpsertQdrant["Upsert Vectors to Qdrant<br/>(Point ID = chunk.id, tenant_id payload index)"]
-        UpsertQdrant --> MarkComplete["Update Document Status &rarr; COMPLETED<br/>(Explicit gc.collect)"]
-    end
-
-    subgraph ErrorHandling["Fault Tolerance & Observability"]
-        ExtractText -.->|Exception| MarkFailed["mark_document_failed<br/>(Status: FAILED, record error_message)"]
-        ChunkPages -.->|Exception| MarkFailed
-        EmbedChunks -.->|Exception| MarkFailed
-        UpsertQdrant -.->|Exception| MarkFailed
-    end
-```
-
 #### Ingestion Execution Modes: Single-Service vs. Distributed
-
-ATLAS decouples the ingestion pipeline logic from the background execution mechanism. The core processing pipeline (`run_ingestion_pipeline` in [`backend/app/workers/pipeline.py`](file:///c:/Users/kisho/Desktop/Atlas/backend/app/workers/pipeline.py)) is shared across two execution modes:
 
 * **Mode A: FastAPI `BackgroundTasks` (Default / Single-Service Profile)**: Executes directly within the FastAPI web process after the HTTP response (`202 Accepted`) is returned. Operates entirely in-process without requiring Redis or Celery worker daemons, designed specifically for micro-container deployments (e.g., Render 512MB RAM free tier).
 * **Mode B: Celery + Redis (Distributed Background Worker Profile)**: Offloads document processing to dedicated Celery worker containers via Redis (`REDIS_URL`). Configured to run in a single-concurrency `solo` process pool (`celery -A app.workers.celery_app worker --pool=solo -c 1`), eliminating the memory duplication of prefork multiprocessing.
@@ -183,11 +137,9 @@ ATLAS decouples the ingestion pipeline logic from the background execution mecha
 
 ---
 
-### Query & Grounded RAG Flow
+### Query / RAG Flow
 
 ATLAS serves user queries through a multi-stage RAG pipeline that balances conversational response latency against deep retrieval precision.
-
-#### Text Retrieval & Generation Flow
 
 ```text
 1. Client Query:             POST /api/v1/chat/completions (SSE streaming) or POST /api/v1/chat/ask (synchronous)
@@ -199,52 +151,6 @@ ATLAS serves user queries through a multi-stage RAG pipeline that balances conve
 7. LLM Model Cascading:      Invoke LLMGeneratorEngine (Groq, Gemini, OpenRouter) with automatic fallback cascade
 8. Transient Error Retry:    Execute exponential backoff (2^attempt seconds) for recoverable API errors
 9. Stream Response:          Yield Server-Sent Events (SSE) tokens (events: sources -> token -> done) to client
-```
-
-#### Retrieval & Generation Architecture Diagram
-
-```mermaid
-flowchart TD
-    User([User / Browser]) -->|POST /api/v1/chat/completions (Stream)<br/>or POST /api/v1/chat/ask (Sync)| ChatAPI["FastAPI Chat Router<br/>(backend/app/api/v1/chat.py)"]
-
-    ChatAPI --> ChatSvc["ChatService Orchestrator<br/>(backend/app/services/chat_service.py)"]
-
-    subgraph RetrievalLayer["1. Vector Retrieval Layer (retrieval_service.py)"]
-        ChatSvc --> EmbedQuery["Embed Natural Language Query<br/>(Cloud Gemini 384-d or FastEmbed ONNX)"]
-        
-        EmbedQuery --> RetrievalPath{"Retrieval Mode"}
-        
-        RetrievalPath -->|Conversational Chat Default<br/>enable_hybrid=False| DenseSearch["Fast-Path Dense Qdrant Search<br/>(tenant_id filter, Top-K nearest neighbors)"]
-        
-        RetrievalPath -.->|Deep Retrieval Mode<br/>enable_hybrid=True| HybridSearch["Dense Search (Top-2K)<br/>+ Sparse BM25 Search (Top-2K)"]
-        HybridSearch -.-> RRF["Reciprocal Rank Fusion (RRF k=60)<br/>Score = &Sigma; 1 / (60 + rank)"]
-        RRF -.-> NeuralRerank{"enable_rerank=True?"}
-        NeuralRerank -.->|Yes| CrossEncoder["Cross-Encoder Neural Reranking<br/>(cross-encoder/ms-marco-MiniLM-L-6-v2)"]
-        NeuralRerank -.->|No| RRFTopK["Slice Top-K Candidate Chunks"]
-    end
-
-    subgraph GuardAndPrompt["2. Grounding & Sandboxing (prompts.py)"]
-        DenseSearch --> ContextCheck{"Retrieved Chunks &gt; 0?"}
-        CrossEncoder --> ContextCheck
-        RRFTopK --> ContextCheck
-        
-        ContextCheck -->|No Chunks Found| ShortCircuit["Empty Retrieval Guard Clause<br/>(Short-circuit LLM & emit fallback response)"]
-        
-        ContextCheck -->|Context Retrieved| XMLPrompt["Build Grounded Messages<br/>(Encapsulate snippets in &lt;context&gt; XML tags)"]
-    end
-
-    subgraph LLMEngineLayer["3. Resilient LLM Inference (generator.py)"]
-        XMLPrompt --> LLMEngine["LLMGeneratorEngine (OpenAI-compatible)<br/>(Groq / Google Gemini / OpenRouter)"]
-        
-        LLMEngine --> ModelCascade{"Candidate Model Cascade<br/>(Primary &rarr; Fallback Models)"}
-        ModelCascade -->|Transient Error: 503 / 429 / 500| CascadeNext["Cascade to Next Candidate Model"]
-        ModelCascade -->|Transient Exception| RetryBackoff["Exponential Backoff Retry<br/>(delay = 2^attempt, max 3 retries)"]
-        
-        ModelCascade -->|Generation Success| StreamResponse["SSE Token Stream / JSON Response<br/>(events: sources, token, done)"]
-    end
-
-    ShortCircuit --> StreamResponse
-    StreamResponse --> User
 ```
 
 #### Fast-Path Dense vs. Hybrid Retrieval Modes
@@ -291,46 +197,9 @@ ATLAS supports two distinct operational deployment profiles tailored to differen
 | **Frontend Hosting** | Local Next.js dev server (`http://localhost:3000`) | Vercel production hosting (`https://atlasui-three.vercel.app`) |
 | **Resource Envelope** | Flexible (multiple local containers & volumes) | Strictly budget-conscious (engineered under 512MB RAM) |
 
-### Required vs. Optional Services Matrix
+### Local Docker
 
-* **Required for All Profiles**: FastAPI Gateway, PostgreSQL (local or Supabase), Qdrant (local or Cloud), and LLM API credentials.
-* **Required Only for Distributed Worker Mode**: Redis 7 and the Celery worker daemon (`--pool=solo`).
-* **Cloud Low-Memory Deployment Path**: Google Gemini API key (zero-RAM embeddings) and native FastAPI `BackgroundTasks` (zero Redis/Celery).
-
-### Profile A — Local Docker / Multi-Container Deployment
-
-```mermaid
-flowchart TD
-    Browser([User Browser]) <-->|http://localhost:3000| Frontend["Next.js Frontend<br/>(Node.js / React 19)"]
-    Frontend <-->|http://localhost:8000/api/v1| Backend["FastAPI Backend Gateway<br/>(uvicorn app.main:app, Port: 8000)"]
-
-    subgraph DockerCompose["Docker Compose Infrastructure (deploy/docker-compose.yml)"]
-        direction TB
-        Postgres["atlas_postgres<br/>(postgres:16-alpine, Port: 5432)<br/>Volume: postgres_data"]
-        Qdrant["atlas_qdrant<br/>(qdrant:v1.8.4, Ports: 6333/6334)<br/>Volume: qdrant_data"]
-        Redis["atlas_redis<br/>(redis:7-alpine, Port: 6379)<br/>Volume: redis_data"]
-    end
-
-    Backend <-->|asyncpg| Postgres
-    Backend <-->|REST/gRPC| Qdrant
-    Backend --> LocalDisk["Local Disk Storage<br/>(backend/storage/documents/)"]
-
-    subgraph IngestionChoice["Local Ingestion Worker Mode (Select One)"]
-        direction TB
-        ModeA["Mode A: FastAPI BackgroundTasks<br/>(In-Process, Zero Broker, Default)"]
-        ModeB["Mode B: Celery Worker Daemon<br/>(celery --pool=solo -c 1)"]
-    end
-
-    Backend -.->|Default| ModeA
-    Backend -.->|Optional Dispatch| Redis
-    Redis <--> ModeB
-    ModeA <--> Postgres
-    ModeB <--> Postgres
-    ModeA <--> Qdrant
-    ModeB <--> Qdrant
-```
-
-#### Step-by-Step Local Deployment
+Deploying ATLAS locally uses Docker Compose for core data services while running FastAPI and Next.js on the host:
 
 1. **Launch Infrastructure**:
    ```bash
@@ -347,7 +216,7 @@ flowchart TD
    uvicorn app.main:app --reload --port 8000
    ```
 3. **Local Worker Mode**:
-   * *Option 1 (Default)*: Native in-process `BackgroundTasks` (zero extra terminal required).
+   * *Option 1 (Default)*: Native in-process `BackgroundTasks` (no extra commands required).
    * *Option 2 (Distributed)*: Run Celery in a separate terminal:
      ```bash
      celery -A app.workers.celery_app worker --loglevel=info --pool=solo -c 1
@@ -359,64 +228,22 @@ flowchart TD
    npm run dev
    ```
 
-#### Local Storage & Volumes
-* `postgres_data`: Persists relational tables across restarts.
-* `qdrant_data`: Persists vector points, payloads, and HNSW graph collections.
-* `redis_data`: Persists task broker state.
-* `backend/storage/documents/`: Local directory holding raw uploaded PDFs.
-* Reset all data: `docker compose -f deploy/docker-compose.yml down -v`
+* **Storage Volumes**: `postgres_data` (relational), `qdrant_data` (vectors), and `redis_data` (tasks) persist across restarts. Reset all local state via `docker compose -f deploy/docker-compose.yml down -v`.
 
-### Profile B — 512MB Cloud Single-Service Deployment
+### 512MB Cloud
 
-```mermaid
-flowchart TD
-    Browser([End User Browser]) <-->|HTTPS| VercelApp["Vercel Frontend<br/>(https://atlasui-three.vercel.app)"]
-    VercelApp <-->|HTTPS / REST & SSE Streaming<br/>CORS Whitelisted| RenderApp["Render Web Service (512MB RAM)<br/>(uvicorn app.main:app via start.sh)"]
+Engineered to operate reliably on micro-containers (e.g., Render free tier) without memory exhaustion:
 
-    subgraph RenderContainer["Single-Service Container (Render)"]
-        RenderApp --> Startup["start.sh Startup Sequence<br/>(1. alembic upgrade head &rarr; 2. uvicorn)"]
-        Startup --> InProcessWorker["FastAPI BackgroundTasks<br/>(In-process PDF Ingestion, No Redis)"]
-    end
-
-    subgraph ManagedCloudServices["External Managed Cloud Services (Zero Local RAM)"]
-        direction TB
-        Supabase[("Supabase PostgreSQL<br/>(DATABASE_URL via asyncpg)")]
-        QdrantCloud[("Qdrant Cloud Managed Cluster<br/>(QDRANT_URL + QDRANT_API_KEY)")]
-        GeminiAPI["Google Gemini Cloud API<br/>(Embedding: models/gemini-embedding-001, 384-d)"]
-        LLMProvider["LLM API Provider<br/>(Groq / Google Gemini / OpenRouter)"]
-    end
-
-    RenderApp <-->|SSL / asyncpg| Supabase
-    RenderApp <-->|HTTPS / REST| QdrantCloud
-    RenderApp <-->|HTTPS| LLMProvider
-    InProcessWorker <-->|HTTPS Batch 50| GeminiAPI
-    InProcessWorker <--> Supabase
-    InProcessWorker <--> QdrantCloud
-```
-
-#### 512MB Resource Rationale
-ATLAS achieves reliable single-service cloud operation through:
-1. Zero-RAM Cloud Embeddings (Gemini 384-d REST API).
-2. Framework Pruning (Native `tiktoken` chunking saving ~180MB RAM over LlamaIndex).
-3. Brokerless Background Tasks (FastAPI native `BackgroundTasks`, omitting Redis & Celery).
-4. Managed Cloud Data Services (Supabase PostgreSQL + Qdrant Cloud).
-5. Single-Process Foreground Web Server ([`backend/start.sh`](file:///c:/Users/kisho/Desktop/Atlas/backend/start.sh) running `alembic upgrade head` before `uvicorn`).
-
-#### Render Web Service Deployment Configuration
-* **Service Type**: Web Service | **Root Directory**: `backend` | **Environment**: `Python 3`
-* **Build Command**: `pip install -e .` | **Start Command**: `./start.sh` | **Health Check**: `/health`
-* **Managed Connections**: Supabase (`DATABASE_URL` auto-rewritten to `postgresql+asyncpg://`), Qdrant Cloud (`QDRANT_URL`, `QDRANT_API_KEY`), and Google Gemini (`GEMINI_API_KEY`). Redis is **not needed**.
-
-### Deployment Troubleshooting
-* **PostgreSQL Asyncpg Dialect**: Verify your connection URI is rewritten to `postgresql+asyncpg://` (handled automatically by `backend/app/db/session.py`).
-* **Qdrant Connection**: Check local port 6333 (`curl http://localhost:6333/healthz`) or verify `QDRANT_URL` includes `https://` in the cloud.
-* **Redis Connection Refused**: Redis is only required when explicitly running Celery. In `BackgroundTasks` mode, Redis is completely bypassed.
-* **512MB Container OOM**: Ensure `GEMINI_API_KEY` is configured to use cloud embeddings, `ENABLE_RERANK=False`, and Celery prefork workers are disabled.
-
-### Deployment Security & Hardening
-* Never commit `.env` credentials to Git. Use platform secret managers on Render and Vercel.
-* Restrict database and vector engine ports (`5432`, `6333`, `6379`) to localhost or internal private networks.
-* Ensure `SECRET_KEY` is securely set; the backend refuses to start without it.
+* **512MB Resource Rationale**:
+  1. *Zero-RAM Cloud Embeddings*: Google Gemini 384-d API offloads model weights entirely.
+  2. *Framework Pruning*: Native `tiktoken` chunking eliminates ~180MB LlamaIndex import overhead.
+  3. *Brokerless Tasks*: Native FastAPI `BackgroundTasks` eliminates Redis and Celery processes.
+  4. *Managed Cloud Services*: Supabase PostgreSQL and Qdrant Cloud eliminate local database memory.
+  5. *Foreground Server*: [`backend/start.sh`](file:///c:/Users/kisho/Desktop/Atlas/backend/start.sh) runs database migrations (`alembic upgrade head`) before launching `uvicorn`.
+* **Render Web Service Configuration**:
+  * Service Type: `Web Service` | Root Directory: `backend` | Environment: `Python 3`
+  * Build Command: `pip install -e .` | Start Command: `./start.sh` | Health Check: `/health`
+  * Managed Connections: `DATABASE_URL` (auto-rewritten to `postgresql+asyncpg://`), `QDRANT_URL`, `QDRANT_API_KEY`, and `GEMINI_API_KEY`. Redis is **not needed**.
 
 ---
 
@@ -434,7 +261,7 @@ docker compose -f deploy/docker-compose.yml up -d
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 pip install -e .
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
