@@ -38,16 +38,16 @@ export default function Home() {
       <div 
         role="status"
         aria-live="polite"
-        className="min-h-screen bg-[#0B0E0D] text-[#89938C] flex flex-col items-center justify-center font-mono text-xs gap-3"
+        className="min-h-screen bg-[var(--bg-workspace)] text-[var(--text-secondary)] flex flex-col items-center justify-center font-mono text-xs gap-3"
       >
-        <span className="w-2 h-2 rounded-full bg-[#6F9B82] animate-pulse" aria-hidden="true" />
+        <span className="w-2 h-2 rounded-full bg-[var(--status-ready)] animate-pulse" aria-hidden="true" />
         <span>INITIALIZING ATLAS WORKSPACE...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0E0D] text-[#E4E8E4] flex flex-col font-sans technical-grid-bg">
+    <div className="min-h-screen bg-[var(--bg-workspace)] text-[var(--text-primary)] flex flex-col font-sans technical-grid-bg transition-colors duration-150">
       <Navbar
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}

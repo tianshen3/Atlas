@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/lib/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,17 +26,40 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[#0B0E0D] text-[#E4E8E4] technical-grid-bg selection:bg-[#6F9B82]/20 selection:text-[#E4E8E4]">
+      <head>
+        {/* Anti-theme-flash inline script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('atlas-theme');
+                  var theme = stored ? stored : 'dark';
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-[var(--bg-workspace)] text-[var(--text-primary)] technical-grid-bg transition-colors duration-150">
         {/* WCAG Skip to Main Content link */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#151A17] focus:text-[#E4E8E4] focus:border focus:border-[#6F9B82] focus:rounded text-xs font-mono"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-[var(--surface-secondary)] focus:text-[var(--text-primary)] focus:border focus:border-[var(--accent-primary)] focus:rounded text-xs font-mono"
         >
           Skip to main content
         </a>
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

@@ -1,37 +1,69 @@
 @import "tailwindcss";
 
-:root {
+/* -------------------------------------------------------------------------
+ * Dark Theme (Default)
+ * Palette: Charcoal workspace with muted engineering green signals
+ * ------------------------------------------------------------------------- */
+:root,
+html.dark {
   --bg-workspace: #0B0E0D;
   --surface-primary: #111513;
   --surface-secondary: #151A17;
   --surface-tertiary: #1C221F;
   --border-subtle: #242A26;
   --border-muted: #1A201C;
-  --border-focus: #6F9B82;
+
   --text-primary: #E4E8E4;
   --text-secondary: #89938C;
   --text-muted: #626B65;
-  --accent: #6F9B82;
+
+  --accent-primary: #6F9B82;
   --accent-hover: #82AA91;
   --accent-subtle: rgba(111, 155, 130, 0.12);
+
+  --status-ready: #6F9B82;
+  --status-processing: #89938C;
+  --status-failed: #C26363;
+
   --grid-line: rgba(255, 255, 255, 0.025);
-  
+  --focus-ring: #82AA91;
+
+  --background: var(--bg-workspace);
+  --foreground: var(--text-primary);
+}
+
+/* -------------------------------------------------------------------------
+ * Light Theme (Mineral Paper / Technical Notebook)
+ * Not pure white; restrained paper/engineering surface
+ * ------------------------------------------------------------------------- */
+html.light {
+  --bg-workspace: #F3F4F1;
+  --surface-primary: #F8F9F6;
+  --surface-secondary: #ECEFEA;
+  --surface-tertiary: #E3E7E1;
+  --border-subtle: #D9DED8;
+  --border-muted: #E2E6E1;
+
+  --text-primary: #202521;
+  --text-secondary: #667069;
+  --text-muted: #8A928C;
+
+  --accent-primary: #5F826C;
+  --accent-hover: #4F705B;
+  --accent-subtle: rgba(95, 130, 108, 0.10);
+
+  --status-ready: #5F826C;
+  --status-processing: #667069;
+  --status-failed: #B55454;
+
+  --grid-line: rgba(32, 37, 33, 0.045);
+  --focus-ring: #4F705B;
+
   --background: var(--bg-workspace);
   --foreground: var(--text-primary);
 }
 
 @theme inline {
-  --color-workspace: var(--bg-workspace);
-  --color-surface-primary: var(--surface-primary);
-  --color-surface-secondary: var(--surface-secondary);
-  --color-surface-tertiary: var(--surface-tertiary);
-  --color-border-subtle: var(--border-subtle);
-  --color-border-muted: var(--border-muted);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-muted: var(--text-muted);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -39,26 +71,26 @@
 html,
 body {
   min-height: 100%;
-  background-color: #0B0E0D;
-  color: #E4E8E4;
+  background-color: var(--bg-workspace);
+  color: var(--text-primary);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle 36px neutral grid background */
+/* Subtle 36px technical grid background across both dark & light themes */
 .technical-grid-bg {
-  background-color: #0B0E0D;
+  background-color: var(--bg-workspace);
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 36px 36px;
   background-position: center top;
 }
 
 /* WCAG 2.2 Level AA High-Contrast Focus Ring */
 *:focus-visible {
-  outline: 2px solid #6F9B82 !important;
+  outline: 2px solid var(--focus-ring) !important;
   outline-offset: 2px !important;
 }
 
@@ -68,23 +100,23 @@ body {
   min-height: 44px;
 }
 
-/* Scrollbar styling for dark technical palette */
+/* Scrollbar styling conforming to active theme surfaces */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0E0D;
+  background: var(--bg-workspace);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #242A26;
+  background: var(--border-subtle);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #343C37;
+  background: var(--text-muted);
 }
 
 /* WCAG 2.2 Reduced Motion accessibility */

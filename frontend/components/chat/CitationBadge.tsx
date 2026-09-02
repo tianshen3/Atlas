@@ -48,7 +48,7 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ sourceIndex, sourc
 
   if (!source) {
     return (
-      <span className="inline-block font-mono text-xs text-[#89938C] px-1">
+      <span className="inline-block font-mono text-xs text-[var(--text-muted)] px-1">
         [{sourceIndex}]
       </span>
     );
@@ -67,12 +67,12 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ sourceIndex, sourc
         aria-label={`Source ${source.source_index}: ${source.file_name}, page ${source.page_number}`}
         className={`inline-flex items-center gap-1 px-1.5 py-0.2 text-[11px] font-mono rounded border transition-colors ${
           isOpen
-            ? 'bg-[#1C2420] text-[#E4E8E4] border-[#6F9B82]'
-            : 'bg-[#151A17] text-[#89938C] hover:text-[#E4E8E4] border-[#242A26] hover:border-[#6F9B82]'
+            ? 'bg-[var(--surface-tertiary)] text-[var(--text-primary)] border-[var(--accent-primary)]'
+            : 'bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-[var(--accent-primary)]'
         }`}
       >
-        <span className="text-[#6F9B82] font-semibold">[{source.source_index}]</span>
-        <span className="max-w-[120px] truncate hidden sm:inline text-[10px] text-[#89938C]">
+        <span className="text-[var(--accent-primary)] font-semibold">[{source.source_index}]</span>
+        <span className="max-w-[120px] truncate hidden sm:inline text-[10px] text-[var(--text-secondary)]">
           {source.file_name}
         </span>
       </button>
@@ -82,13 +82,13 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ sourceIndex, sourc
           ref={popoverRef}
           role="dialog"
           aria-label={`Citation details for Source ${source.source_index}`}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 sm:w-80 p-3 bg-[#151A17] border border-[#242A26] rounded-md shadow-2xl text-xs z-50 text-[#E4E8E4] font-sans"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 sm:w-80 p-3 bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-md shadow-lg text-xs z-50 text-[var(--text-primary)] font-sans transition-colors duration-150"
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#242A26]">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-1.5 overflow-hidden">
-              <FileText className="w-3.5 h-3.5 text-[#6F9B82] shrink-0" aria-hidden="true" />
-              <span className="font-mono text-[11px] font-semibold text-[#E4E8E4] truncate">
+              <FileText className="w-3.5 h-3.5 text-[var(--accent-primary)] shrink-0" aria-hidden="true" />
+              <span className="font-mono text-[11px] font-semibold text-[var(--text-primary)] truncate">
                 Source {source.source_index}
               </span>
             </div>
@@ -98,31 +98,31 @@ export const CitationBadge: React.FC<CitationBadgeProps> = ({ sourceIndex, sourc
                 triggerRef.current?.focus();
               }}
               aria-label="Close citation details"
-              className="text-[#89938C] hover:text-[#E4E8E4] p-1 rounded hover:bg-[#1C221F]"
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--surface-secondary)] transition-colors"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
 
           {/* Reference Meta Grid */}
-          <div className="space-y-1.5 text-[11px] font-mono text-[#89938C]">
+          <div className="space-y-1.5 text-[11px] font-mono text-[var(--text-secondary)]">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[#626B65]">DOCUMENT:</span>
-              <span className="text-[#E4E8E4] truncate text-right font-sans text-xs">
+              <span className="text-[var(--text-muted)]">DOCUMENT:</span>
+              <span className="text-[var(--text-primary)] truncate text-right font-sans text-xs font-medium">
                 {source.file_name}
               </span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[#626B65]">PAGE:</span>
-              <span className="text-[#E4E8E4]">p. {source.page_number}</span>
+              <span className="text-[var(--text-muted)]">PAGE:</span>
+              <span className="text-[var(--text-primary)]">p. {source.page_number}</span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[#626B65]">RELEVANCE:</span>
-              <span className="text-[#6F9B82] font-semibold">{scorePercentage}%</span>
+              <span className="text-[var(--text-muted)]">RELEVANCE:</span>
+              <span className="text-[var(--accent-primary)] font-semibold">{scorePercentage}%</span>
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[#626B65]">DOC UUID:</span>
-              <span className="text-[#89938C] truncate max-w-[140px]">
+              <span className="text-[var(--text-muted)]">DOC UUID:</span>
+              <span className="text-[var(--text-secondary)] truncate max-w-[140px]">
                 {source.document_id}
               </span>
             </div>

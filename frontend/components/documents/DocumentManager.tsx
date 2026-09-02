@@ -159,29 +159,29 @@ export const DocumentManager: React.FC = () => {
     switch (status) {
       case 'COMPLETED':
         return (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#6F9B82]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#6F9B82]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--status-ready)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-ready)]" aria-hidden="true" />
             <span>Indexed</span>
           </span>
         );
       case 'PROCESSING':
         return (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#89938C]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#89938C] animate-pulse" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--status-processing)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-processing)] animate-pulse" aria-hidden="true" />
             <span>Processing...</span>
           </span>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#C26363]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#C26363]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--status-failed)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-failed)]" aria-hidden="true" />
             <span>Failed</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#626B65]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#626B65]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-muted)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" aria-hidden="true" />
             <span>Pending</span>
           </span>
         );
@@ -199,19 +199,19 @@ export const DocumentManager: React.FC = () => {
   return (
     <section aria-labelledby="doc-store-heading" className="w-full max-w-5xl mx-auto space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-2 border-b border-[#242A26]">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
         <div>
-          <h2 id="doc-store-heading" className="text-base font-semibold text-[#E4E8E4] tracking-tight">
+          <h2 id="doc-store-heading" className="text-base font-semibold text-[var(--text-primary)] tracking-tight">
             Document Store
           </h2>
-          <p className="text-xs text-[#89938C] mt-0.5">
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
             Manage documents available to the ATLAS knowledge base.
           </p>
         </div>
 
         <button
           onClick={() => fetchDocs()}
-          className="self-start flex items-center gap-1.5 text-xs text-[#89938C] hover:text-[#E4E8E4] font-mono px-2 py-1 rounded hover:bg-[#151A17] transition-colors"
+          className="self-start flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-mono px-2 py-1 rounded hover:bg-[var(--surface-secondary)] transition-colors"
           aria-label="Refresh document repository"
         >
           <RefreshCw className="w-3 h-3" aria-hidden="true" />
@@ -224,9 +224,9 @@ export const DocumentManager: React.FC = () => {
         <div 
           role="alert" 
           aria-live="assertive"
-          className="p-3 bg-[#1F1414] border border-[#522525] text-[#E08A8A] text-xs rounded flex items-start gap-2.5"
+          className="p-3 bg-[var(--surface-secondary)] border border-[var(--status-failed)] text-[var(--status-failed)] text-xs rounded flex items-start gap-2.5"
         >
-          <AlertCircle className="w-4 h-4 text-[#E08A8A] shrink-0 mt-0.5" aria-hidden="true" />
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[var(--status-failed)]" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
@@ -235,9 +235,9 @@ export const DocumentManager: React.FC = () => {
         <div 
           role="status" 
           aria-live="polite"
-          className="p-3 bg-[#121A15] border border-[#243E2E] text-[#82AA91] text-xs rounded flex items-start gap-2.5"
+          className="p-3 bg-[var(--surface-secondary)] border border-[var(--status-ready)] text-[var(--status-ready)] text-xs rounded flex items-start gap-2.5"
         >
-          <CheckCircle2 className="w-4 h-4 text-[#82AA91] shrink-0 mt-0.5" aria-hidden="true" />
+          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[var(--status-ready)]" aria-hidden="true" />
           <span>{successMsg}</span>
         </div>
       )}
@@ -249,18 +249,18 @@ export const DocumentManager: React.FC = () => {
         onDragLeave={handleDragLeave}
         className={`p-6 border border-dashed rounded-md text-center transition-colors ${
           isDragOver 
-            ? 'bg-[#151A17] border-[#6F9B82]' 
-            : 'bg-[#111513] border-[#242A26] hover:border-[#343C37]'
+            ? 'bg-[var(--surface-secondary)] border-[var(--accent-primary)]' 
+            : 'bg-[var(--surface-primary)] border-[var(--border-subtle)] hover:border-[var(--text-muted)]'
         }`}
       >
         <div className="flex flex-col items-center justify-center space-y-2">
-          <UploadCloud className="w-6 h-6 text-[#6F9B82]" aria-hidden="true" />
+          <UploadCloud className="w-6 h-6 text-[var(--accent-primary)]" aria-hidden="true" />
           
           <div className="space-y-1">
-            <p className="text-xs font-mono font-semibold tracking-wider text-[#E4E8E4] uppercase">
+            <p className="text-xs font-mono font-semibold tracking-wider text-[var(--text-primary)] uppercase">
               DROP PDF HERE
             </p>
-            <p className="text-[11px] text-[#89938C]">
+            <p className="text-[11px] text-[var(--text-secondary)]">
               or choose a file from your system
             </p>
           </div>
@@ -276,14 +276,14 @@ export const DocumentManager: React.FC = () => {
             />
             <label
               htmlFor="pdf-file-upload-input"
-              className={`px-3 py-1.5 bg-[#151A17] hover:bg-[#1C221F] text-[#E4E8E4] border border-[#242A26] hover:border-[#6F9B82] rounded text-xs font-mono uppercase tracking-wider font-medium cursor-pointer transition-colors ${
+              className={`px-3 py-1.5 bg-[var(--surface-secondary)] hover:bg-[var(--surface-tertiary)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] rounded text-xs font-mono uppercase tracking-wider font-medium cursor-pointer transition-colors ${
                 uploading ? 'opacity-50 pointer-events-none' : ''
               }`}
             >
               {uploading ? 'Staging...' : 'Choose PDF File'}
             </label>
 
-            <span className="text-[10px] font-mono text-[#626B65] uppercase">
+            <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">
               PDF · MAX 50 MB
             </span>
           </div>
@@ -291,25 +291,25 @@ export const DocumentManager: React.FC = () => {
       </div>
 
       {/* Document Catalog Table */}
-      <div className="bg-[#111513] border border-[#242A26] rounded-md overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#242A26] flex items-center justify-between text-xs">
-          <span className="font-mono text-[11px] text-[#89938C] uppercase tracking-wider font-semibold">
+      <div className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-md overflow-hidden transition-colors duration-150">
+        <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between text-xs">
+          <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-wider font-semibold">
             INDEXED CORPUS ({documents.length})
           </span>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-xs font-mono text-[#89938C]" role="status">
+          <div className="p-8 text-center text-xs font-mono text-[var(--text-secondary)]" role="status">
             Loading document metadata...
           </div>
         ) : documents.length === 0 ? (
-          <div className="p-8 text-center text-xs text-[#89938C]">
+          <div className="p-8 text-center text-xs text-[var(--text-secondary)]">
             No documents available. Upload a PDF document above to index into the knowledge base.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs" aria-label="Documents catalog table">
-              <thead className="bg-[#151A17] border-b border-[#242A26] text-[#89938C] font-mono text-[10px] uppercase tracking-wider">
+              <thead className="bg-[var(--surface-secondary)] border-b border-[var(--border-subtle)] text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wider">
                 <tr>
                   <th scope="col" className="px-4 py-2.5">Name</th>
                   <th scope="col" className="px-4 py-2.5">Size</th>
@@ -318,22 +318,22 @@ export const DocumentManager: React.FC = () => {
                   <th scope="col" className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#242A26] text-[#E4E8E4]">
+              <tbody className="divide-y divide-[var(--border-subtle)] text-[var(--text-primary)]">
                 {documents.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-[#151A17]/50 transition-colors">
+                  <tr key={doc.id} className="hover:bg-[var(--surface-secondary)]/50 transition-colors">
                     <td className="px-4 py-3 font-medium">
                       <div className="flex items-center gap-2">
-                        <FileText className="w-3.5 h-3.5 text-[#6F9B82] shrink-0" aria-hidden="true" />
+                        <FileText className="w-3.5 h-3.5 text-[var(--accent-primary)] shrink-0" aria-hidden="true" />
                         <span className="truncate max-w-xs sm:max-w-md">{doc.filename}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-[#89938C] text-[11px]">
+                    <td className="px-4 py-3 font-mono text-[var(--text-secondary)] text-[11px]">
                       {formatFileSize(doc.file_size_bytes)}
                     </td>
                     <td className="px-4 py-3">
                       {renderStatus(doc.status)}
                     </td>
-                    <td className="px-4 py-3 font-mono text-[#89938C] text-[11px]">
+                    <td className="px-4 py-3 font-mono text-[var(--text-secondary)] text-[11px]">
                       {new Date(doc.created_at).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'short',
@@ -345,7 +345,7 @@ export const DocumentManager: React.FC = () => {
                         type="button"
                         onClick={() => setDocToDelete({ id: doc.id, filename: doc.filename })}
                         aria-label={`Delete ${doc.filename}`}
-                        className="text-[#89938C] hover:text-[#C26363] p-1 rounded hover:bg-[#151A17] transition-colors focus:ring-1 focus:ring-[#C26363]"
+                        className="text-[var(--text-secondary)] hover:text-[var(--status-failed)] p-1 rounded hover:bg-[var(--surface-secondary)] transition-colors focus:ring-1 focus:ring-[var(--status-failed)]"
                       >
                         <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
@@ -365,14 +365,14 @@ export const DocumentManager: React.FC = () => {
           aria-modal="true"
           aria-labelledby="delete-dialog-title"
           aria-describedby="delete-dialog-desc"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-md bg-[#111513] border border-[#242A26] rounded-md p-6 shadow-2xl space-y-4">
-            <h3 id="delete-dialog-title" className="text-sm font-semibold text-[#E4E8E4]">
+          <div className="w-full max-w-md bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-md p-6 shadow-2xl space-y-4">
+            <h3 id="delete-dialog-title" className="text-sm font-semibold text-[var(--text-primary)]">
               Confirm Document Removal
             </h3>
-            <p id="delete-dialog-desc" className="text-xs text-[#89938C] leading-relaxed">
-              Are you sure you want to remove <span className="text-[#E4E8E4] font-medium font-mono">{docToDelete.filename}</span>? This permanently purges the raw file, relational chunks, and Qdrant vector embeddings.
+            <p id="delete-dialog-desc" className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Are you sure you want to remove <span className="text-[var(--text-primary)] font-medium font-mono">{docToDelete.filename}</span>? This permanently purges the raw file, relational chunks, and Qdrant vector embeddings.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -380,14 +380,14 @@ export const DocumentManager: React.FC = () => {
                 ref={confirmCancelBtnRef}
                 type="button"
                 onClick={() => setDocToDelete(null)}
-                className="px-3 py-1.5 bg-[#151A17] hover:bg-[#1C221F] text-[#89938C] hover:text-[#E4E8E4] border border-[#242A26] rounded text-xs font-mono uppercase"
+                className="px-3 py-1.5 bg-[var(--surface-secondary)] hover:bg-[var(--surface-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] rounded text-xs font-mono uppercase"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="px-3 py-1.5 bg-[#2A1717] hover:bg-[#3A1D1D] text-[#E08A8A] border border-[#522525] rounded text-xs font-mono uppercase font-semibold"
+                className="px-3 py-1.5 bg-[var(--surface-secondary)] hover:bg-[var(--surface-tertiary)] border border-[var(--status-failed)] text-[var(--status-failed)] rounded text-xs font-mono uppercase font-semibold"
               >
                 Confirm Delete
               </button>
