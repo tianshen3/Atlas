@@ -352,15 +352,6 @@ ATLAS is under active development. Current operational capabilities include:
 
 ---
 
-## Future Direction
-
-* Additional document parser support (DOCX, Markdown, HTML, CSV).
-* Advanced RAG evaluation metrics (RAGAS / TruLens integration).
-* Dynamic collection creation per tenant.
-* Expanded agentic tool integration for web search and multi-step reasoning.
-
----
-
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
